@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Budget Tracker{% endblock %}
+
+{% block content %}
+<div class="hero-container">
+    <div class="glass-card hero-card">
+        <h1 class="hero-title">Budget Tracker</h1>
+        <p class="hero-subtitle">Take control of your finances with our modern budgeting tool</p>
+        
+        <div class="hero-buttons">
+            <a href="{{ url_for('login') }}" class="btn btn-primary">Login</a>
+            <a href="{{ url_for('register') }}" class="btn btn-secondary">Sign Up</a>
+        </div>
+    </div>
+    
+    <div class="features-grid">
+        <div class="glass-card feature-card">
+            <div class="feature-icon">💳</div>
+            <h3>Account Management</h3>
+            <p>Manage multiple accounts and track balances</p>
+        </div>
+        
+        <div class="glass-card feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>Transaction Tracking</h3>
+            <p>Monitor your income and expenses</p>
+        </div>
+        
+        <div class="glass-card feature-card">
+            <div class="feature-icon">🔄</div>
+            <h3>Recurring Payments</h3>
+            <p>Automate your recurring bills and subscriptions</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

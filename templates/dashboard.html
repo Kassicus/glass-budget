@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Budget Tracker{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <header class="dashboard-header">
+        <div class="glass-card header-card">
+            <h1>Dashboard</h1>
+            <div class="header-actions">
+                <button id="addAccountBtn" class="btn btn-primary">Add Account</button>
+                <button id="addTransactionBtn" class="btn btn-secondary">Add Transaction</button>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline">Logout</a>
+            </div>
+        </div>
+    </header>
+    
+    <div class="dashboard-grid">
+        <section class="accounts-section">
+            <div class="glass-card">
+                <h2>Accounts</h2>
+                <div id="accountsList" class="accounts-list">
+                    <!-- Accounts will be loaded here -->
+                </div>
+            </div>
+        </section>
+        
+        <section class="transactions-section">
+            <div class="glass-card">
+                <div class="section-header">
+                    <h2>Recent Transactions</h2>
+                    <div class="section-actions">
+                        <select id="transactionCategoryFilter" class="category-filter">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="transactionsList" class="transactions-list">
+                    <!-- Transactions will be loaded here -->
+                </div>
+            </div>
+        </section>
+        
+        <section class="bills-section">
+            <div class="glass-card">
+                <div class="bills-header">
+                    <h2>Bills Tracker</h2>
+                    <div class="bills-actions">
+                        <select id="billCategoryFilter" class="category-filter">
+                            <option value="">All Categories</option>
+                        </select>
+                        <button id="addBillBtn" class="btn btn-small btn-primary">Add Bill</button>
+                        <button id="resetBillsBtn" class="btn btn-small btn-outline">Reset All</button>
+                    </div>
+                </div>
+                <div id="billsList" class="bills-list">
+                    <!-- Bills will be loaded here -->
+                </div>
+            </div>
+        </section>
+        
+        <section class="transaction-management-section">
+            <div class="glass-card">
+                <div class="transaction-management-header">
+                    <h2>Transaction Management</h2>
+                    <div class="transaction-management-actions">
+                        <input type="text" id="transactionSearch" placeholder="Search transactions..." class="search-input">
+                        <select id="transactionTypeFilter" class="category-filter">
+                            <option value="">All Types</option>
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+                        <select id="transactionManagementCategoryFilter" class="category-filter">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="transaction-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalTransactions">0</div>
+                        <div class="stat-label">Total Transactions</div>
+                    </div>
+                    <div class="stat-card income">
+                        <div class="stat-value" id="totalIncome">$0</div>
+                        <div class="stat-label">Total Income</div>
+                    </div>
+                    <div class="stat-card expense">
+                        <div class="stat-value" id="totalExpense">$0</div>
+                        <div class="stat-label">Total Expenses</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="netAmount">$0</div>
+                        <div class="stat-label">Net Amount</div>
+                    </div>
+                </div>
+                <div id="allTransactionsList" class="all-transactions-list">
+                    <!-- All transactions will be loaded here -->
+                </div>
+                <div class="transaction-pagination">
+                    <button id="prevPage" class="btn btn-small btn-outline">Previous</button>
+                    <span id="pageInfo">Page 1 of 1</span>
+                    <button id="nextPage" class="btn btn-small btn-outline">Next</button>
+                </div>
+            </div>
+        </section>
+        
+        <section class="categories-section">
+            <div class="glass-card">
+                <div class="categories-header">
+                    <h2>Categories</h2>
+                    <button id="manageCategoriesBtn" class="btn btn-small btn-secondary">Manage Categories</button>
+                </div>
+                <div id="categoriesList" class="categories-list">
+                    <!-- Categories will be loaded here -->
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="accountModal" class="modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h3 id="accountModalTitle">Add Account</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <form id="accountForm">
+            <div class="form-group">
+                <label for="accountName">Account Name</label>
+                <input type="text" id="accountName" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="accountType">Account Type</label>
+                <select id="accountType" name="account_type" required>
+                    <option value="checking">Checking</option>
+                    <option value="savings">Savings</option>
+                    <option value="credit">Credit Card</option>
+                    <option value="investment">Investment</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="accountBalance">Initial Balance</label>
+                <input type="number" id="accountBalance" name="balance" step="0.01" value="0">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline modal-cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="transactionModal" class="modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h3 id="transactionModalTitle">Add Transaction</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <form id="transactionForm">
+            <div class="form-group">
+                <label for="transactionDescription">Description</label>
+                <input type="text" id="transactionDescription" name="description" required>
+            </div>
+            <div class="form-group">
+                <label for="transactionAmount">Amount</label>
+                <input type="number" id="transactionAmount" name="amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label for="transactionType">Type</label>
+                <select id="transactionType" name="transaction_type" required>
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="transactionCategory">Category</label>
+                <input type="text" id="transactionCategory" name="category" required>
+            </div>
+            <div class="form-group">
+                <label for="transactionAccount">Account</label>
+                <select id="transactionAccount" name="account_id" required>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="transactionDate">Date</label>
+                <input type="date" id="transactionDate" name="date">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline modal-cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Transaction</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="billModal" class="modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h3 id="billModalTitle">Add Bill</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <form id="billForm">
+            <div class="form-group">
+                <label for="billName">Bill Name</label>
+                <input type="text" id="billName" name="name" required placeholder="e.g., Electric Bill, Rent">
+            </div>
+            <div class="form-group">
+                <label for="billAmount">Amount Due</label>
+                <input type="number" id="billAmount" name="amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label for="billCategory">Category</label>
+                <input type="text" id="billCategory" name="category" required placeholder="e.g., Utilities, Housing">
+            </div>
+            <div class="form-group">
+                <label for="billAccount">Account</label>
+                <select id="billAccount" name="account_id" required>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="billDayOfMonth">Day of Month (1-28)</label>
+                <input type="number" id="billDayOfMonth" name="day_of_month" min="1" max="28" required placeholder="e.g., 3 for 3rd of every month">
+                <small style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">
+                    This bill will be due on this day every month (e.g., rent on the 3rd)
+                </small>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline modal-cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Bill</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="categoryModal" class="modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h3>Manage Categories</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="category-management">
+            <div class="category-stats">
+                <h4>Category Overview</h4>
+                <div id="categoryStatsContainer" class="category-stats-container">
+                    <!-- Category stats will be loaded here -->
+                </div>
+            </div>
+            
+            <div class="category-actions-section">
+                <h4>Category Actions</h4>
+                <div class="category-action-form">
+                    <select id="categorySelect" class="form-control">
+                        <option value="">Select a category...</option>
+                    </select>
+                    <div class="category-action-buttons">
+                        <button id="renameCategoryBtn" class="btn btn-small btn-secondary">Rename</button>
+                        <button id="deleteCategoryBtn" class="btn btn-small btn-outline">Delete/Merge</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="categoryActionModal" class="modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h3 id="categoryActionTitle">Category Action</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <form id="categoryActionForm">
+            <div id="categoryActionContent">
+                <!-- Dynamic content will be inserted here -->
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline modal-cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="categoryActionSubmit">Submit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="message" class="message hidden"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

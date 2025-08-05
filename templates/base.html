@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Budget Tracker{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="background">
+        <div class="gradient-bg"></div>
+        <div class="oil-paint-layers">
+            <div class="paint-layer"></div>
+            <div class="paint-layer"></div>
+            <div class="paint-layer"></div>
+            <div class="paint-layer"></div>
+            <div class="paint-layer"></div>
+        </div>
+        <div class="paint-depth-overlay"></div>
+    </div>
+    
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

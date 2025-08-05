@@ -1,0 +1,518 @@
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///budget.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+from models import db, User, Account, Transaction, Bill
+
+db.init_app(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+@app.route('/')
+def index():
+    if current_user.is_authenticated:
+        return render_template('dashboard.html')
+    return render_template('index.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        data = request.get_json()
+        user = User.query.filter_by(email=data['email']).first()
+        
+        if user and check_password_hash(user.password_hash, data['password']):
+            login_user(user)
+            return jsonify({'success': True, 'redirect': url_for('dashboard')})
+        return jsonify({'success': False, 'message': 'Invalid credentials'})
+    
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        data = request.get_json()
+        
+        if User.query.filter_by(email=data['email']).first():
+            return jsonify({'success': False, 'message': 'Email already registered'})
+        
+        user = User(
+            username=data['username'],
+            email=data['email'],
+            password_hash=generate_password_hash(data['password'])
+        )
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        login_user(user)
+        return jsonify({'success': True, 'redirect': url_for('dashboard')})
+    
+    return render_template('register.html')
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
+
+# API Endpoints for Accounts
+@app.route('/api/accounts', methods=['GET', 'POST'])
+@login_required
+def accounts():
+    if request.method == 'GET':
+        user_accounts = Account.query.filter_by(user_id=current_user.id).all()
+        return jsonify([{
+            'id': acc.id,
+            'name': acc.name,
+            'account_type': acc.account_type,
+            'balance': acc.balance,
+            'created_at': acc.created_at.isoformat()
+        } for acc in user_accounts])
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        account = Account(
+            name=data['name'],
+            account_type=data['account_type'],
+            balance=float(data.get('balance', 0)),
+            user_id=current_user.id
+        )
+        db.session.add(account)
+        db.session.commit()
+        return jsonify({'success': True, 'id': account.id})
+
+@app.route('/api/accounts/<int:account_id>', methods=['PUT', 'DELETE'])
+@login_required
+def account_detail(account_id):
+    account = Account.query.filter_by(id=account_id, user_id=current_user.id).first()
+    if not account:
+        return jsonify({'success': False, 'message': 'Account not found'}), 404
+    
+    if request.method == 'PUT':
+        data = request.get_json()
+        account.name = data.get('name', account.name)
+        account.account_type = data.get('account_type', account.account_type)
+        account.balance = float(data.get('balance', account.balance))
+        db.session.commit()
+        return jsonify({'success': True})
+    
+    if request.method == 'DELETE':
+        db.session.delete(account)
+        db.session.commit()
+        return jsonify({'success': True})
+
+# API Endpoints for Transactions
+@app.route('/api/transactions', methods=['GET', 'POST'])
+@login_required
+def transactions():
+    if request.method == 'GET':
+        user_transactions = Transaction.query.filter_by(user_id=current_user.id).order_by(Transaction.date.desc()).all()
+        return jsonify([{
+            'id': trans.id,
+            'description': trans.description,
+            'amount': trans.amount,
+            'category': trans.category,
+            'transaction_type': trans.transaction_type,
+            'date': trans.date.isoformat(),
+            'account_id': trans.account_id,
+            'account_name': trans.account.name
+        } for trans in user_transactions])
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        
+        # Parse date if provided, otherwise use current date
+        transaction_date = datetime.utcnow()
+        if 'date' in data and data['date']:
+            transaction_date = datetime.strptime(data['date'], '%Y-%m-%d')
+        
+        transaction = Transaction(
+            description=data['description'],
+            amount=float(data['amount']),
+            category=data['category'],
+            transaction_type=data['transaction_type'],
+            date=transaction_date,
+            user_id=current_user.id,
+            account_id=data['account_id']
+        )
+        
+        # Update account balance
+        account = Account.query.get(data['account_id'])
+        if account and account.user_id == current_user.id:
+            if data['transaction_type'] == 'income':
+                account.balance += float(data['amount'])
+            else:
+                account.balance -= float(data['amount'])
+        
+        db.session.add(transaction)
+        db.session.commit()
+        return jsonify({'success': True, 'id': transaction.id})
+
+@app.route('/api/transactions/<int:transaction_id>', methods=['PUT', 'DELETE'])
+@login_required
+def transaction_detail(transaction_id):
+    transaction = Transaction.query.filter_by(id=transaction_id, user_id=current_user.id).first()
+    if not transaction:
+        return jsonify({'success': False, 'message': 'Transaction not found'}), 404
+    
+    if request.method == 'PUT':
+        data = request.get_json()
+        old_amount = transaction.amount
+        old_type = transaction.transaction_type
+        old_account = transaction.account
+        
+        # Update transaction fields
+        transaction.description = data.get('description', transaction.description)
+        transaction.amount = float(data.get('amount', transaction.amount))
+        transaction.category = data.get('category', transaction.category)
+        transaction.transaction_type = data.get('transaction_type', transaction.transaction_type)
+        
+        # Update date if provided
+        if 'date' in data:
+            transaction.date = datetime.strptime(data['date'], '%Y-%m-%d')
+        
+        # Handle account change
+        if 'account_id' in data and int(data['account_id']) != transaction.account_id:
+            new_account = Account.query.get(int(data['account_id']))
+            if new_account and new_account.user_id == current_user.id:
+                # Remove from old account
+                if old_type == 'income':
+                    old_account.balance -= old_amount
+                else:
+                    old_account.balance += old_amount
+                
+                # Add to new account
+                if transaction.transaction_type == 'income':
+                    new_account.balance += transaction.amount
+                else:
+                    new_account.balance -= transaction.amount
+                
+                transaction.account_id = int(data['account_id'])
+        else:
+            # Same account, just update the balance difference
+            account = transaction.account
+            if old_type == 'income':
+                account.balance -= old_amount
+            else:
+                account.balance += old_amount
+                
+            if transaction.transaction_type == 'income':
+                account.balance += transaction.amount
+            else:
+                account.balance -= transaction.amount
+        
+        db.session.commit()
+        return jsonify({'success': True})
+    
+    if request.method == 'DELETE':
+        # Reverse the transaction from account balance
+        account = transaction.account
+        if transaction.transaction_type == 'income':
+            account.balance -= transaction.amount
+        else:
+            account.balance += transaction.amount
+        
+        db.session.delete(transaction)
+        db.session.commit()
+        return jsonify({'success': True})
+
+# API Endpoints for Bills
+@app.route('/api/bills', methods=['GET', 'POST'])
+@login_required
+def bills():
+    if request.method == 'GET':
+        user_bills = Bill.query.filter_by(user_id=current_user.id).order_by(Bill.day_of_month.asc()).all()
+        current_date = datetime.now()
+        
+        bills_data = []
+        for bill in user_bills:
+            # Calculate if bill is paid for current month
+            current_month_paid = False
+            if bill.is_paid and bill.last_paid_month == current_date.month and bill.last_paid_year == current_date.year:
+                current_month_paid = True
+            
+            # Calculate due date for current month
+            current_month_due_date = datetime(current_date.year, current_date.month, min(bill.day_of_month, 28))
+            
+            # If the due date has passed this month and it's not paid, it's overdue
+            is_overdue = current_month_due_date < current_date and not current_month_paid
+            
+            bills_data.append({
+                'id': bill.id,
+                'name': bill.name,
+                'amount': bill.amount,
+                'category': bill.category,
+                'day_of_month': bill.day_of_month,
+                'current_month_due_date': current_month_due_date.isoformat(),
+                'is_paid': current_month_paid,
+                'is_overdue': is_overdue,
+                'is_active': bill.is_active,
+                'account_id': bill.account_id,
+                'account_name': bill.account.name if bill.account else None,
+                'paid_date': bill.paid_date.isoformat() if bill.paid_date else None,
+                'last_paid_month': bill.last_paid_month,
+                'last_paid_year': bill.last_paid_year
+            })
+        
+        return jsonify(bills_data)
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        day_of_month = int(data['day_of_month'])
+        
+        # Validate day of month (1-28 to avoid issues with different month lengths)
+        if day_of_month < 1 or day_of_month > 28:
+            return jsonify({'success': False, 'message': 'Day of month must be between 1 and 28'}), 400
+        
+        bill = Bill(
+            name=data['name'],
+            amount=float(data['amount']),
+            category=data['category'],
+            day_of_month=day_of_month,
+            user_id=current_user.id,
+            account_id=int(data['account_id'])
+        )
+        db.session.add(bill)
+        db.session.commit()
+        return jsonify({'success': True, 'id': bill.id})
+
+@app.route('/api/bills/<int:bill_id>', methods=['PUT', 'DELETE'])
+@login_required
+def bill_detail(bill_id):
+    bill = Bill.query.filter_by(id=bill_id, user_id=current_user.id).first()
+    if not bill:
+        return jsonify({'success': False, 'message': 'Bill not found'}), 404
+    
+    if request.method == 'PUT':
+        data = request.get_json()
+        bill.name = data.get('name', bill.name)
+        bill.amount = float(data.get('amount', bill.amount))
+        bill.category = data.get('category', bill.category)
+        bill.is_active = data.get('is_active', bill.is_active)
+        
+        if 'day_of_month' in data:
+            day_of_month = int(data['day_of_month'])
+            if day_of_month < 1 or day_of_month > 28:
+                return jsonify({'success': False, 'message': 'Day of month must be between 1 and 28'}), 400
+            bill.day_of_month = day_of_month
+        
+        if 'account_id' in data:
+            bill.account_id = int(data['account_id'])
+        
+        db.session.commit()
+        return jsonify({'success': True})
+    
+    if request.method == 'DELETE':
+        db.session.delete(bill)
+        db.session.commit()
+        return jsonify({'success': True})
+
+@app.route('/api/bills/<int:bill_id>/toggle-paid', methods=['POST'])
+@login_required
+def toggle_bill_paid(bill_id):
+    bill = Bill.query.filter_by(id=bill_id, user_id=current_user.id).first()
+    if not bill:
+        return jsonify({'success': False, 'message': 'Bill not found'}), 404
+    
+    current_date = datetime.now()
+    current_month_paid = bill.is_paid and bill.last_paid_month == current_date.month and bill.last_paid_year == current_date.year
+    
+    if not current_month_paid:
+        # Mark as paid for current month
+        bill.is_paid = True
+        bill.paid_date = current_date
+        bill.last_paid_month = current_date.month
+        bill.last_paid_year = current_date.year
+        
+        # Create transaction when marking as paid
+        transaction = Transaction(
+            description=f"Bill Payment: {bill.name}",
+            amount=bill.amount,
+            category=bill.category,
+            transaction_type='expense',
+            user_id=current_user.id,
+            account_id=bill.account_id
+        )
+        # Update account balance
+        account = Account.query.get(bill.account_id)
+        if account and account.user_id == current_user.id:
+            account.balance -= bill.amount
+        db.session.add(transaction)
+        
+        message = f"Bill '{bill.name}' marked as paid for {current_date.strftime('%B %Y')}"
+    else:
+        # Mark as unpaid for current month
+        bill.is_paid = False
+        bill.paid_date = None
+        bill.last_paid_month = None
+        bill.last_paid_year = None
+        
+        message = f"Bill '{bill.name}' marked as unpaid for {current_date.strftime('%B %Y')}"
+    
+    db.session.commit()
+    return jsonify({
+        'success': True, 
+        'is_paid': bill.is_paid and bill.last_paid_month == current_date.month and bill.last_paid_year == current_date.year,
+        'message': message
+    })
+
+@app.route('/api/bills/reset-all', methods=['POST'])
+@login_required
+def reset_all_bills():
+    bills = Bill.query.filter_by(user_id=current_user.id).all()
+    for bill in bills:
+        bill.is_paid = False
+        bill.paid_date = None
+        bill.last_paid_month = None
+        bill.last_paid_year = None
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'All bills have been reset to unpaid for all months'})
+
+# API Endpoints for Category Management
+@app.route('/api/categories', methods=['GET'])
+@login_required
+def get_categories():
+    # Get all unique categories from transactions and bills
+    transaction_categories = db.session.query(Transaction.category).filter_by(user_id=current_user.id).distinct().all()
+    bill_categories = db.session.query(Bill.category).filter_by(user_id=current_user.id).distinct().all()
+    
+    # Combine and count usage
+    categories = {}
+    
+    for (category,) in transaction_categories:
+        if category:
+            transaction_count = Transaction.query.filter_by(user_id=current_user.id, category=category).count()
+            categories[category] = categories.get(category, {'transactions': 0, 'bills': 0})
+            categories[category]['transactions'] = transaction_count
+    
+    for (category,) in bill_categories:
+        if category:
+            bill_count = Bill.query.filter_by(user_id=current_user.id, category=category).count()
+            categories[category] = categories.get(category, {'transactions': 0, 'bills': 0})
+            categories[category]['bills'] = bill_count
+    
+    # Format response
+    result = []
+    for category, counts in categories.items():
+        result.append({
+            'name': category,
+            'transaction_count': counts['transactions'],
+            'bill_count': counts['bills'],
+            'total_count': counts['transactions'] + counts['bills']
+        })
+    
+    # Sort by total usage
+    result.sort(key=lambda x: x['total_count'], reverse=True)
+    return jsonify(result)
+
+@app.route('/api/categories/<category_name>/rename', methods=['POST'])
+@login_required
+def rename_category(category_name):
+    data = request.get_json()
+    new_name = data.get('new_name', '').strip()
+    
+    if not new_name:
+        return jsonify({'success': False, 'message': 'New category name is required'}), 400
+    
+    # Update transactions
+    Transaction.query.filter_by(user_id=current_user.id, category=category_name).update({'category': new_name})
+    
+    # Update bills
+    Bill.query.filter_by(user_id=current_user.id, category=category_name).update({'category': new_name})
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Category renamed to "{new_name}"'})
+
+@app.route('/api/categories/<category_name>', methods=['DELETE'])
+@login_required
+def delete_category(category_name):
+    data = request.get_json()
+    merge_into = data.get('merge_into', '').strip() if data else ''
+    
+    if merge_into:
+        # Merge into another category
+        Transaction.query.filter_by(user_id=current_user.id, category=category_name).update({'category': merge_into})
+        Bill.query.filter_by(user_id=current_user.id, category=category_name).update({'category': merge_into})
+        message = f'Category "{category_name}" merged into "{merge_into}"'
+    else:
+        # Set to "Uncategorized"
+        Transaction.query.filter_by(user_id=current_user.id, category=category_name).update({'category': 'Uncategorized'})
+        Bill.query.filter_by(user_id=current_user.id, category=category_name).update({'category': 'Uncategorized'})
+        message = f'Category "{category_name}" removed, items moved to "Uncategorized"'
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': message})
+
+@app.route('/api/transactions/by-category/<category_name>', methods=['GET'])
+@login_required
+def transactions_by_category(category_name):
+    transactions = Transaction.query.filter_by(user_id=current_user.id, category=category_name).order_by(Transaction.date.desc()).all()
+    return jsonify([{
+        'id': trans.id,
+        'description': trans.description,
+        'amount': trans.amount,
+        'category': trans.category,
+        'transaction_type': trans.transaction_type,
+        'date': trans.date.isoformat(),
+        'account_id': trans.account_id,
+        'account_name': trans.account.name
+    } for trans in transactions])
+
+@app.route('/api/bills/by-category/<category_name>', methods=['GET'])
+@login_required
+def bills_by_category(category_name):
+    bills = Bill.query.filter_by(user_id=current_user.id, category=category_name).order_by(Bill.day_of_month.asc()).all()
+    current_date = datetime.now()
+    
+    bills_data = []
+    for bill in bills:
+        # Calculate if bill is paid for current month
+        current_month_paid = False
+        if bill.is_paid and bill.last_paid_month == current_date.month and bill.last_paid_year == current_date.year:
+            current_month_paid = True
+        
+        # Calculate due date for current month
+        current_month_due_date = datetime(current_date.year, current_date.month, min(bill.day_of_month, 28))
+        
+        bills_data.append({
+            'id': bill.id,
+            'name': bill.name,
+            'amount': bill.amount,
+            'category': bill.category,
+            'day_of_month': bill.day_of_month,
+            'current_month_due_date': current_month_due_date.isoformat(),
+            'is_paid': current_month_paid,
+            'is_active': bill.is_active,
+            'account_id': bill.account_id,
+            'account_name': bill.account.name if bill.account else None,
+            'paid_date': bill.paid_date.isoformat() if bill.paid_date else None
+        })
+    
+    return jsonify(bills_data)
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)
