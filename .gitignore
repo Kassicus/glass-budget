@@ -4,3 +4,6 @@ __pycache__/*.pyc
 # Virtual Environments
 budget_venv/
 budget_env/
+
+# Environment Files
+.env
