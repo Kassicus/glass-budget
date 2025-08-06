@@ -84,21 +84,60 @@ function renderAccounts() {
         return;
     }
     
-    accountsList.innerHTML = accounts.map(account => `
-        <div class="account-item">
-            <div class="account-header">
-                <div>
-                    <div class="account-name">${account.name}</div>
-                    <div class="account-type">${account.account_type}</div>
+    accountsList.innerHTML = accounts.map(account => {
+        if (account.account_type === 'credit') {
+            const remainingCredit = account.credit_limit ? (account.credit_limit - account.current_balance) : 0;
+            const utilizationPercentage = account.credit_limit && account.credit_limit > 0 ? 
+                ((account.current_balance / account.credit_limit) * 100).toFixed(1) : 0;
+            
+            return `
+                <div class="account-item credit-account">
+                    <div class="account-header">
+                        <div class="account-info">
+                            <div class="account-name">${account.name}</div>
+                            <div class="account-type">${account.account_type}</div>
+                        </div>
+                        <div class="account-actions">
+                            <button class="btn btn-small btn-secondary btn-icon" onclick="editAccount(${account.id})">Edit</button>
+                            <button class="btn btn-small btn-outline btn-icon" onclick="deleteAccount(${account.id})">Delete</button>
+                        </div>
+                    </div>
+                    <div class="credit-info">
+                        <div class="credit-balance">
+                            <div class="credit-label">Balance Owed</div>
+                            <div class="credit-amount owed">${formatCurrency(account.current_balance || 0)}</div>
+                        </div>
+                        <div class="credit-available">
+                            <div class="credit-label">Available</div>
+                            <div class="credit-amount available">${formatCurrency(remainingCredit)}</div>
+                        </div>
+                        <div class="credit-utilization">
+                            <div class="credit-label">Limit: ${formatCurrency(account.credit_limit || 0)} | ${utilizationPercentage}% used</div>
+                            <div class="utilization-bar">
+                                <div class="utilization-fill" style="width: ${Math.min(utilizationPercentage, 100)}%"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="account-balance">${formatCurrency(account.balance)}</div>
-            <div class="account-actions">
-                <button class="btn btn-small btn-secondary btn-icon" onclick="editAccount(${account.id})">Edit</button>
-                <button class="btn btn-small btn-outline btn-icon" onclick="deleteAccount(${account.id})">Delete</button>
-            </div>
-        </div>
-    `).join('');
+            `;
+        } else {
+            return `
+                <div class="account-item">
+                    <div class="account-header">
+                        <div class="account-info">
+                            <div class="account-name">${account.name}</div>
+                            <div class="account-type">${account.account_type}</div>
+                        </div>
+                        <div class="account-actions">
+                            <button class="btn btn-small btn-secondary btn-icon" onclick="editAccount(${account.id})">Edit</button>
+                            <button class="btn btn-small btn-outline btn-icon" onclick="deleteAccount(${account.id})">Delete</button>
+                        </div>
+                    </div>
+                    <div class="account-balance">${formatCurrency(account.balance)}</div>
+                </div>
+            `;
+        }
+    }).join('');
 }
 
 // Render transactions
@@ -248,8 +287,20 @@ function setupEventListeners() {
         goToPage(currentPage + 1);
     });
     
-    // Account form
-    document.getElementById('accountForm')?.addEventListener('submit', handleAccountSubmit);
+    // Account form - use onsubmit instead of addEventListener to avoid conflicts
+    const accountForm = document.getElementById('accountForm');
+    if (accountForm) {
+        accountForm.onsubmit = handleAccountSubmit;
+    }
+    
+    // Account type change handler
+    document.getElementById('accountType')?.addEventListener('change', (e) => {
+        if (e.target.value === 'credit') {
+            showCreditFields();
+        } else {
+            hideCreditFields();
+        }
+    });
     
     // Transaction form
     document.getElementById('transactionForm')?.addEventListener('submit', handleTransactionSubmit);
@@ -268,6 +319,12 @@ async function handleAccountSubmit(e) {
         account_type: formData.get('account_type'),
         balance: formData.get('balance') || 0
     };
+    
+    // Add credit account specific fields
+    if (formData.get('account_type') === 'credit') {
+        accountData.credit_limit = formData.get('credit_limit') || null;
+        accountData.current_balance = formData.get('current_balance') || 0;
+    }
     
     try {
         await apiRequest('/api/accounts', {
@@ -389,10 +446,22 @@ async function editAccount(accountId) {
     document.getElementById('accountName').value = account.name;
     document.getElementById('accountType').value = account.account_type;
     document.getElementById('accountBalance').value = account.balance;
+    
+    // Handle credit account fields
+    if (account.account_type === 'credit') {
+        document.getElementById('creditLimit').value = account.credit_limit || '';
+        document.getElementById('currentBalance').value = account.current_balance || 0;
+        showCreditFields();
+    } else {
+        hideCreditFields();
+    }
+    
     document.getElementById('accountModalTitle').textContent = 'Edit Account';
     
-    // Update form handler
+    // Store the original handler and replace it temporarily
     const form = document.getElementById('accountForm');
+    const originalHandler = form.onsubmit;
+    
     form.onsubmit = async (e) => {
         e.preventDefault();
         
@@ -403,6 +472,12 @@ async function editAccount(accountId) {
             balance: formData.get('balance')
         };
         
+        // Add credit account specific fields
+        if (formData.get('account_type') === 'credit') {
+            accountData.credit_limit = formData.get('credit_limit') || null;
+            accountData.current_balance = formData.get('current_balance') || 0;
+        }
+        
         try {
             await apiRequest(`/api/accounts/${accountId}`, {
                 method: 'PUT',
@@ -412,13 +487,16 @@ async function editAccount(accountId) {
             showMessage('Account updated successfully!');
             closeModal('accountModal');
             await loadAccounts();
+            
+            // Restore original handler after successful update
+            form.onsubmit = originalHandler;
+            document.getElementById('accountModalTitle').textContent = 'Add Account';
+            // Clear form
+            form.reset();
+            hideCreditFields();
         } catch (error) {
             showMessage('Failed to update account', 'error');
         }
-        
-        // Restore original handler
-        form.onsubmit = handleAccountSubmit;
-        document.getElementById('accountModalTitle').textContent = 'Add Account';
     };
     
     openModal('accountModal');
@@ -901,4 +979,19 @@ function applyTransactionFilters() {
     currentPage = 1; // Reset to first page when applying filters
     renderAllTransactions();
     updateTransactionStats();
+}
+
+// Show credit account fields
+function showCreditFields() {
+    document.getElementById('creditLimitGroup').style.display = 'block';
+    document.getElementById('currentBalanceGroup').style.display = 'block';
+}
+
+// Hide credit account fields
+function hideCreditFields() {
+    document.getElementById('creditLimitGroup').style.display = 'none';
+    document.getElementById('currentBalanceGroup').style.display = 'none';
+    // Clear the values when hiding
+    document.getElementById('creditLimit').value = '';
+    document.getElementById('currentBalance').value = '0';
 }

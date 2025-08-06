@@ -58,6 +58,23 @@ function closeModal(modalId) {
         const form = modal.querySelector('form');
         if (form) {
             form.reset();
+            
+            // Special handling for account form to restore original handler
+            if (modalId === 'accountModal') {
+                // Restore the original submit handler
+                if (typeof handleAccountSubmit === 'function') {
+                    form.onsubmit = handleAccountSubmit;
+                }
+                // Reset modal title
+                const modalTitle = modal.querySelector('#accountModalTitle');
+                if (modalTitle) {
+                    modalTitle.textContent = 'Add Account';
+                }
+                // Hide credit fields
+                if (typeof hideCreditFields === 'function') {
+                    hideCreditFields();
+                }
+            }
         }
     }
 }

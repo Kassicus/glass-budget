@@ -20,6 +20,8 @@ class Account(db.Model):
     name = db.Column(db.String(100), nullable=False)
     account_type = db.Column(db.String(50), nullable=False)  # checking, savings, credit, etc.
     balance = db.Column(db.Float, default=0.0)
+    credit_limit = db.Column(db.Float, nullable=True)  # For credit accounts only
+    current_balance = db.Column(db.Float, default=0.0)  # For credit accounts: amount currently owed/used
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     

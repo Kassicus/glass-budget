@@ -16,6 +16,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 from models import db, User, Account, Transaction, Bill
 
 db.init_app(app)
+
+# Create tables if they don't exist
+with app.app_context():
+    db.create_all()
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -87,6 +92,8 @@ def accounts():
             'name': acc.name,
             'account_type': acc.account_type,
             'balance': acc.balance,
+            'credit_limit': acc.credit_limit,
+            'current_balance': acc.current_balance,
             'created_at': acc.created_at.isoformat()
         } for acc in user_accounts])
     
@@ -96,6 +103,8 @@ def accounts():
             name=data['name'],
             account_type=data['account_type'],
             balance=float(data.get('balance', 0)),
+            credit_limit=float(data['credit_limit']) if data.get('credit_limit') else None,
+            current_balance=float(data.get('current_balance', 0)),
             user_id=current_user.id
         )
         db.session.add(account)
@@ -114,6 +123,10 @@ def account_detail(account_id):
         account.name = data.get('name', account.name)
         account.account_type = data.get('account_type', account.account_type)
         account.balance = float(data.get('balance', account.balance))
+        if 'credit_limit' in data:
+            account.credit_limit = float(data['credit_limit']) if data['credit_limit'] else None
+        if 'current_balance' in data:
+            account.current_balance = float(data.get('current_balance', account.current_balance))
         db.session.commit()
         return jsonify({'success': True})
     
@@ -160,10 +173,19 @@ def transactions():
         # Update account balance
         account = Account.query.get(data['account_id'])
         if account and account.user_id == current_user.id:
-            if data['transaction_type'] == 'income':
-                account.balance += float(data['amount'])
+            if account.account_type == 'credit':
+                # For credit accounts, expenses increase current_balance (debt)
+                # and income/payments decrease current_balance (paying off debt)
+                if data['transaction_type'] == 'expense':
+                    account.current_balance += float(data['amount'])
+                else:  # income (payment toward credit)
+                    account.current_balance -= float(data['amount'])
             else:
-                account.balance -= float(data['amount'])
+                # For regular accounts, use the existing logic
+                if data['transaction_type'] == 'income':
+                    account.balance += float(data['amount'])
+                else:
+                    account.balance -= float(data['amount'])
         
         db.session.add(transaction)
         db.session.commit()
@@ -197,30 +219,56 @@ def transaction_detail(transaction_id):
             new_account = Account.query.get(int(data['account_id']))
             if new_account and new_account.user_id == current_user.id:
                 # Remove from old account
-                if old_type == 'income':
-                    old_account.balance -= old_amount
+                if old_account.account_type == 'credit':
+                    if old_type == 'expense':
+                        old_account.current_balance -= old_amount
+                    else:
+                        old_account.current_balance += old_amount
                 else:
-                    old_account.balance += old_amount
+                    if old_type == 'income':
+                        old_account.balance -= old_amount
+                    else:
+                        old_account.balance += old_amount
                 
                 # Add to new account
-                if transaction.transaction_type == 'income':
-                    new_account.balance += transaction.amount
+                if new_account.account_type == 'credit':
+                    if transaction.transaction_type == 'expense':
+                        new_account.current_balance += transaction.amount
+                    else:
+                        new_account.current_balance -= transaction.amount
                 else:
-                    new_account.balance -= transaction.amount
+                    if transaction.transaction_type == 'income':
+                        new_account.balance += transaction.amount
+                    else:
+                        new_account.balance -= transaction.amount
                 
                 transaction.account_id = int(data['account_id'])
         else:
             # Same account, just update the balance difference
             account = transaction.account
-            if old_type == 'income':
-                account.balance -= old_amount
-            else:
-                account.balance += old_amount
+            if account.account_type == 'credit':
+                # Reverse old transaction
+                if old_type == 'expense':
+                    account.current_balance -= old_amount
+                else:
+                    account.current_balance += old_amount
                 
-            if transaction.transaction_type == 'income':
-                account.balance += transaction.amount
+                # Apply new transaction
+                if transaction.transaction_type == 'expense':
+                    account.current_balance += transaction.amount
+                else:
+                    account.current_balance -= transaction.amount
             else:
-                account.balance -= transaction.amount
+                # Regular account logic
+                if old_type == 'income':
+                    account.balance -= old_amount
+                else:
+                    account.balance += old_amount
+                    
+                if transaction.transaction_type == 'income':
+                    account.balance += transaction.amount
+                else:
+                    account.balance -= transaction.amount
         
         db.session.commit()
         return jsonify({'success': True})
@@ -228,10 +276,16 @@ def transaction_detail(transaction_id):
     if request.method == 'DELETE':
         # Reverse the transaction from account balance
         account = transaction.account
-        if transaction.transaction_type == 'income':
-            account.balance -= transaction.amount
+        if account.account_type == 'credit':
+            if transaction.transaction_type == 'expense':
+                account.current_balance -= transaction.amount
+            else:
+                account.current_balance += transaction.amount
         else:
-            account.balance += transaction.amount
+            if transaction.transaction_type == 'income':
+                account.balance -= transaction.amount
+            else:
+                account.balance += transaction.amount
         
         db.session.delete(transaction)
         db.session.commit()
@@ -357,7 +411,10 @@ def toggle_bill_paid(bill_id):
         # Update account balance
         account = Account.query.get(bill.account_id)
         if account and account.user_id == current_user.id:
-            account.balance -= bill.amount
+            if account.account_type == 'credit':
+                account.current_balance += bill.amount
+            else:
+                account.balance -= bill.amount
         db.session.add(transaction)
         
         message = f"Bill '{bill.name}' marked as paid for {current_date.strftime('%B %Y')}"
