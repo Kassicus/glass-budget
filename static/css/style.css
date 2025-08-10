@@ -743,6 +743,128 @@ body {
     border-radius: 8px;
 }
 
+/* Savings Goals Styling */
+.savings-goals-section {
+    grid-column: 1 / -1;
+}
+
+.savings-goals-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.savings-goals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.savings-goal-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.savings-goal-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(134, 239, 172, 0.3);
+    transform: translateY(-2px);
+}
+
+.savings-goal-item.completed {
+    border-color: rgba(134, 239, 172, 0.5);
+    background: rgba(134, 239, 172, 0.1);
+}
+
+.goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.goal-info {
+    flex: 1;
+}
+
+.goal-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 5px;
+}
+
+.goal-progress-text {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.goal-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.goal-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, 
+        rgba(134, 239, 172, 0.9) 0%,
+        rgba(134, 239, 172, 0.7) 50%,
+        rgba(134, 239, 172, 0.9) 100%);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.savings-goal-item.completed .progress-fill {
+    background: linear-gradient(90deg, 
+        rgba(34, 197, 94, 0.9) 0%,
+        rgba(34, 197, 94, 0.7) 50%,
+        rgba(34, 197, 94, 0.9) 100%);
+}
+
+.goal-remaining {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.goal-complete {
+    color: rgba(134, 239, 172, 0.9);
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .goal-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .goal-actions {
+        align-self: flex-end;
+    }
+}
+
 /* Transactions List */
 .transactions-list {
     max-height: 400px;

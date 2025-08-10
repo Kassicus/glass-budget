@@ -14,6 +14,7 @@ class User(UserMixin, db.Model):
     accounts = db.relationship('Account', backref='user', lazy=True, cascade='all, delete-orphan')
     transactions = db.relationship('Transaction', backref='user', lazy=True, cascade='all, delete-orphan')
     bills = db.relationship('Bill', backref='user', lazy=True, cascade='all, delete-orphan')
+    savings_goals = db.relationship('SavingsGoal', backref='user', lazy=True, cascade='all, delete-orphan')
 
 class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -52,3 +53,22 @@ class Bill(db.Model):
     paid_date = db.Column(db.DateTime, nullable=True)
     last_paid_month = db.Column(db.Integer, nullable=True)  # Track which month was last paid
     last_paid_year = db.Column(db.Integer, nullable=True)
+
+class SavingsGoal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)  # e.g., "Vacation Fund", "New Computer"
+    current_amount = db.Column(db.Float, default=0.0)  # Current amount saved
+    target_amount = db.Column(db.Float, nullable=False)  # Target amount to save
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)  # Allow for archiving goals
+    
+    @property
+    def percentage_complete(self):
+        if self.target_amount <= 0:
+            return 0
+        return min((self.current_amount / self.target_amount) * 100, 100)
+    
+    @property
+    def remaining_amount(self):
+        return max(self.target_amount - self.current_amount, 0)

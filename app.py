@@ -13,7 +13,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-i
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///budget.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-from models import db, User, Account, Transaction, Bill
+from models import db, User, Account, Transaction, Bill, SavingsGoal
 
 db.init_app(app)
 
@@ -569,7 +569,108 @@ def bills_by_category(category_name):
     
     return jsonify(bills_data)
 
+# API Endpoints for Savings Goals
+@app.route('/api/savings-goals', methods=['GET', 'POST'])
+@login_required
+def savings_goals():
+    if request.method == 'GET':
+        user_goals = SavingsGoal.query.filter_by(user_id=current_user.id, is_active=True).all()
+        return jsonify([{
+            'id': goal.id,
+            'name': goal.name,
+            'current_amount': goal.current_amount,
+            'target_amount': goal.target_amount,
+            'percentage_complete': goal.percentage_complete,
+            'remaining_amount': goal.remaining_amount,
+            'is_active': goal.is_active,
+            'created_at': goal.created_at.isoformat()
+        } for goal in user_goals])
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        goal = SavingsGoal(
+            name=data['name'],
+            target_amount=float(data['target_amount']),
+            current_amount=float(data.get('current_amount', 0)),
+            user_id=current_user.id
+        )
+        db.session.add(goal)
+        db.session.commit()
+        return jsonify({'success': True, 'id': goal.id})
+
+@app.route('/api/savings-goals/<int:goal_id>', methods=['PUT', 'DELETE'])
+@login_required
+def savings_goal_detail(goal_id):
+    goal = SavingsGoal.query.filter_by(id=goal_id, user_id=current_user.id).first()
+    if not goal:
+        return jsonify({'success': False, 'message': 'Savings goal not found'}), 404
+    
+    if request.method == 'PUT':
+        data = request.get_json()
+        goal.name = data.get('name', goal.name)
+        goal.target_amount = float(data.get('target_amount', goal.target_amount))
+        goal.current_amount = float(data.get('current_amount', goal.current_amount))
+        goal.is_active = data.get('is_active', goal.is_active)
+        db.session.commit()
+        return jsonify({'success': True})
+    
+    if request.method == 'DELETE':
+        db.session.delete(goal)
+        db.session.commit()
+        return jsonify({'success': True})
+
+@app.route('/api/savings-goals/<int:goal_id>/add-funds', methods=['POST'])
+@login_required
+def add_funds_to_goal(goal_id):
+    goal = SavingsGoal.query.filter_by(id=goal_id, user_id=current_user.id).first()
+    if not goal:
+        return jsonify({'success': False, 'message': 'Savings goal not found'}), 404
+    
+    data = request.get_json()
+    amount_to_add = float(data['amount'])
+    
+    if amount_to_add <= 0:
+        return jsonify({'success': False, 'message': 'Amount must be positive'}), 400
+    
+    goal.current_amount += amount_to_add
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'new_amount': goal.current_amount,
+        'percentage_complete': goal.percentage_complete,
+        'remaining_amount': goal.remaining_amount,
+        'message': f'Added {amount_to_add} to {goal.name}!'
+    })
+
+@app.route('/api/savings-goals/<int:goal_id>/withdraw-funds', methods=['POST'])
+@login_required
+def withdraw_funds_from_goal(goal_id):
+    goal = SavingsGoal.query.filter_by(id=goal_id, user_id=current_user.id).first()
+    if not goal:
+        return jsonify({'success': False, 'message': 'Savings goal not found'}), 404
+    
+    data = request.get_json()
+    amount_to_withdraw = float(data['amount'])
+    
+    if amount_to_withdraw <= 0:
+        return jsonify({'success': False, 'message': 'Amount must be positive'}), 400
+    
+    if amount_to_withdraw > goal.current_amount:
+        return jsonify({'success': False, 'message': 'Cannot withdraw more than current amount'}), 400
+    
+    goal.current_amount -= amount_to_withdraw
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'new_amount': goal.current_amount,
+        'percentage_complete': goal.percentage_complete,
+        'remaining_amount': goal.remaining_amount,
+        'message': f'Withdrew {amount_to_withdraw} from {goal.name}!'
+    })
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(debug=True, port=5001)

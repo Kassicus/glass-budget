@@ -59,6 +59,18 @@
             </div>
         </section>
         
+        <section class="savings-goals-section">
+            <div class="glass-card">
+                <div class="savings-goals-header">
+                    <h2>Savings Goals</h2>
+                    <button id="addSavingsGoalBtn" class="btn btn-small btn-primary">Add Goal</button>
+                </div>
+                <div id="savingsGoalsList" class="savings-goals-list">
+                    <!-- Savings goals will be loaded here -->
+                </div>
+            </div>
+        </section>
+        
         <section class="transaction-management-section">
             <div class="glass-card">
                 <div class="transaction-management-header">
@@ -286,6 +298,59 @@
             <div class="modal-actions">
                 <button type="button" class="btn btn-outline modal-cancel">Cancel</button>
                 <button type="submit" class="btn btn-primary" id="categoryActionSubmit">Submit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="savingsGoalModal" class="modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h3 id="savingsGoalModalTitle">Add Savings Goal</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <form id="savingsGoalForm">
+            <div class="form-group">
+                <label for="goalName">Goal Name</label>
+                <input type="text" id="goalName" name="name" required placeholder="e.g., Vacation Fund, New Computer">
+            </div>
+            <div class="form-group">
+                <label for="targetAmount">Target Amount</label>
+                <input type="number" id="targetAmount" name="target_amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label for="currentAmount">Current Amount (optional)</label>
+                <input type="number" id="currentAmount" name="current_amount" step="0.01" value="0">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline modal-cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Goal</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="goalFundsModal" class="modal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h3 id="goalFundsModalTitle">Manage Funds</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <form id="goalFundsForm">
+            <div class="form-group">
+                <label for="fundsAmount">Amount</label>
+                <input type="number" id="fundsAmount" name="amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label for="fundsAction">Action</label>
+                <select id="fundsAction" name="action" required>
+                    <option value="add">Add Funds</option>
+                    <option value="withdraw">Withdraw Funds</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline modal-cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Funds</button>
             </div>
         </form>
     </div>

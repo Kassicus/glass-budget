@@ -3,6 +3,7 @@ let accounts = [];
 let transactions = [];
 let bills = [];
 let categories = [];
+let savingsGoals = [];
 let filteredTransactions = [];
 let filteredBills = [];
 
@@ -19,6 +20,7 @@ const accountsList = document.getElementById('accountsList');
 const transactionsList = document.getElementById('transactionsList');
 const billsList = document.getElementById('billsList');
 const categoriesList = document.getElementById('categoriesList');
+const savingsGoalsList = document.getElementById('savingsGoalsList');
 const allTransactionsList = document.getElementById('allTransactionsList');
 
 // Initialize dashboard
@@ -34,7 +36,8 @@ async function loadDashboardData() {
             loadAccounts(),
             loadTransactions(),
             loadBills(),
-            loadCategories()
+            loadCategories(),
+            loadSavingsGoals()
         ]);
     } catch (error) {
         showMessage('Failed to load dashboard data', 'error');
@@ -74,6 +77,16 @@ async function loadBills() {
         renderBills();
     } catch (error) {
         showMessage('Failed to load bills', 'error');
+    }
+}
+
+// Load savings goals
+async function loadSavingsGoals() {
+    try {
+        savingsGoals = await apiRequest('/api/savings-goals');
+        renderSavingsGoals();
+    } catch (error) {
+        showMessage('Failed to load savings goals', 'error');
     }
 }
 
@@ -212,6 +225,49 @@ function renderBills() {
     }).join('');
 }
 
+// Render savings goals
+function renderSavingsGoals() {
+    if (!savingsGoals.length) {
+        savingsGoalsList.innerHTML = '<p style="color: rgba(255,255,255,0.7); text-align: center;">No savings goals found. Create your first goal!</p>';
+        return;
+    }
+    
+    savingsGoalsList.innerHTML = savingsGoals.map(goal => {
+        const percentage = goal.percentage_complete;
+        const isComplete = percentage >= 100;
+        
+        return `
+            <div class="savings-goal-item ${isComplete ? 'completed' : ''}">
+                <div class="goal-header">
+                    <div class="goal-info">
+                        <div class="goal-name">${goal.name}</div>
+                        <div class="goal-progress-text">
+                            ${formatCurrency(goal.current_amount)} of ${formatCurrency(goal.target_amount)} 
+                            (${percentage.toFixed(1)}% complete)
+                        </div>
+                    </div>
+                    <div class="goal-actions">
+                        <button class="btn btn-small btn-primary btn-icon" onclick="manageFunds(${goal.id})">💰</button>
+                        <button class="btn btn-small btn-secondary btn-icon" onclick="editSavingsGoal(${goal.id})">Edit</button>
+                        <button class="btn btn-small btn-outline btn-icon" onclick="deleteSavingsGoal(${goal.id})">Delete</button>
+                    </div>
+                </div>
+                <div class="goal-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${Math.min(percentage, 100)}%"></div>
+                    </div>
+                    <div class="goal-remaining">
+                        ${isComplete ? 
+                            '<span class="goal-complete">🎉 Goal Completed!</span>' : 
+                            `${formatCurrency(goal.remaining_amount)} remaining`
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 // Update account selectors in modals
 function updateAccountSelectors() {
     const selectors = ['transactionAccount', 'billAccount'];
@@ -245,6 +301,11 @@ function setupEventListeners() {
     
     // Reset bills button
     document.getElementById('resetBillsBtn')?.addEventListener('click', resetAllBills);
+    
+    // Add savings goal button
+    document.getElementById('addSavingsGoalBtn')?.addEventListener('click', () => {
+        openModal('savingsGoalModal');
+    });
     
     // Category management button
     document.getElementById('manageCategoriesBtn')?.addEventListener('click', showCategoryManagement);
@@ -307,6 +368,12 @@ function setupEventListeners() {
     
     // Bill form
     document.getElementById('billForm')?.addEventListener('submit', handleBillSubmit);
+    
+    // Savings goal form
+    document.getElementById('savingsGoalForm')?.addEventListener('submit', handleSavingsGoalSubmit);
+    
+    // Goal funds form
+    document.getElementById('goalFundsForm')?.addEventListener('submit', handleGoalFundsSubmit);
 }
 
 // Handle account form submission
@@ -396,6 +463,58 @@ async function handleBillSubmit(e) {
         await Promise.all([loadBills(), loadCategories()]);
     } catch (error) {
         showMessage('Failed to add bill', 'error');
+    }
+}
+
+// Handle savings goal form submission
+async function handleSavingsGoalSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const goalData = {
+        name: formData.get('name'),
+        target_amount: formData.get('target_amount'),
+        current_amount: formData.get('current_amount') || 0
+    };
+    
+    try {
+        await apiRequest('/api/savings-goals', {
+            method: 'POST',
+            body: JSON.stringify(goalData)
+        });
+        
+        showMessage('Savings goal created successfully!');
+        closeModal('savingsGoalModal');
+        await loadSavingsGoals();
+    } catch (error) {
+        showMessage('Failed to create savings goal', 'error');
+    }
+}
+
+// Handle goal funds form submission
+async function handleGoalFundsSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const action = formData.get('action');
+    const amount = formData.get('amount');
+    const goalId = e.target.dataset.goalId;
+    
+    try {
+        const endpoint = action === 'add' ? 
+            `/api/savings-goals/${goalId}/add-funds` : 
+            `/api/savings-goals/${goalId}/withdraw-funds`;
+            
+        const result = await apiRequest(endpoint, {
+            method: 'POST',
+            body: JSON.stringify({ amount: parseFloat(amount) })
+        });
+        
+        showMessage(result.message);
+        closeModal('goalFundsModal');
+        await loadSavingsGoals();
+    } catch (error) {
+        showMessage('Failed to update funds', 'error');
     }
 }
 
@@ -994,4 +1113,80 @@ function hideCreditFields() {
     // Clear the values when hiding
     document.getElementById('creditLimit').value = '';
     document.getElementById('currentBalance').value = '0';
+}
+
+// Edit savings goal
+async function editSavingsGoal(goalId) {
+    const goal = savingsGoals.find(g => g.id === goalId);
+    if (!goal) return;
+    
+    // Populate form
+    document.getElementById('goalName').value = goal.name;
+    document.getElementById('targetAmount').value = goal.target_amount;
+    document.getElementById('currentAmount').value = goal.current_amount;
+    document.getElementById('savingsGoalModalTitle').textContent = 'Edit Savings Goal';
+    
+    // Update form handler
+    const form = document.getElementById('savingsGoalForm');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const goalData = {
+            name: formData.get('name'),
+            target_amount: formData.get('target_amount'),
+            current_amount: formData.get('current_amount')
+        };
+        
+        try {
+            await apiRequest(`/api/savings-goals/${goalId}`, {
+                method: 'PUT',
+                body: JSON.stringify(goalData)
+            });
+            
+            showMessage('Savings goal updated successfully!');
+            closeModal('savingsGoalModal');
+            await loadSavingsGoals();
+        } catch (error) {
+            showMessage('Failed to update savings goal', 'error');
+        }
+        
+        // Restore original handler
+        form.onsubmit = handleSavingsGoalSubmit;
+        document.getElementById('savingsGoalModalTitle').textContent = 'Add Savings Goal';
+        form.reset();
+    };
+    
+    openModal('savingsGoalModal');
+}
+
+// Delete savings goal
+async function deleteSavingsGoal(goalId) {
+    if (!confirm('Are you sure you want to delete this savings goal?')) {
+        return;
+    }
+    
+    try {
+        await apiRequest(`/api/savings-goals/${goalId}`, {
+            method: 'DELETE'
+        });
+        
+        showMessage('Savings goal deleted successfully!');
+        await loadSavingsGoals();
+    } catch (error) {
+        showMessage('Failed to delete savings goal', 'error');
+    }
+}
+
+// Manage funds for a savings goal
+function manageFunds(goalId) {
+    const goal = savingsGoals.find(g => g.id === goalId);
+    if (!goal) return;
+    
+    document.getElementById('goalFundsModalTitle').textContent = `Manage Funds - ${goal.name}`;
+    document.getElementById('goalFundsForm').dataset.goalId = goalId;
+    document.getElementById('fundsAmount').value = '';
+    document.getElementById('fundsAction').value = 'add';
+    
+    openModal('goalFundsModal');
 }
