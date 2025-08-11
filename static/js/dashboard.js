@@ -23,10 +23,10 @@ const categoriesList = document.getElementById('categoriesList');
 const savingsGoalsList = document.getElementById('savingsGoalsList');
 const allTransactionsList = document.getElementById('allTransactionsList');
 
-// Initialize dashboard
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadDashboardData();
+// Initialize dashboard - will be called by sidebar navigation
+document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
+    // Don't auto-load data here - let sidebar navigation handle it
 });
 
 // Load all dashboard data
@@ -97,7 +97,10 @@ function renderAccounts() {
         return;
     }
     
-    accountsList.innerHTML = accounts.map(account => {
+    // For dashboard, show only top 3 accounts by balance
+    const topAccounts = getTopAccountsByBalance(accounts, 3);
+    
+    accountsList.innerHTML = topAccounts.map(account => {
         if (account.account_type === 'credit') {
             const remainingCredit = account.credit_limit ? (account.credit_limit - account.current_balance) : 0;
             const utilizationPercentage = account.credit_limit && account.credit_limit > 0 ? 
@@ -151,6 +154,32 @@ function renderAccounts() {
             `;
         }
     }).join('');
+}
+
+// Helper function to get top accounts by balance
+function getTopAccountsByBalance(accountList, limit = 3) {
+    return accountList
+        .slice() // Create a copy to avoid mutating the original array
+        .sort((a, b) => {
+            // For credit accounts, we want to sort by available credit (higher is better)
+            // For other accounts, sort by balance (higher is better)
+            let balanceA, balanceB;
+            
+            if (a.account_type === 'credit') {
+                balanceA = a.credit_limit ? (a.credit_limit - a.current_balance) : 0;
+            } else {
+                balanceA = a.balance || 0;
+            }
+            
+            if (b.account_type === 'credit') {
+                balanceB = b.credit_limit ? (b.credit_limit - b.current_balance) : 0;
+            } else {
+                balanceB = b.balance || 0;
+            }
+            
+            return balanceB - balanceA; // Descending order
+        })
+        .slice(0, limit);
 }
 
 // Render transactions
@@ -284,31 +313,45 @@ function updateAccountSelectors() {
 
 // Setup event listeners
 function setupEventListeners() {
-    // Add account button
+    // Add account buttons (multiple instances)
     document.getElementById('addAccountBtn')?.addEventListener('click', () => {
         openModal('accountModal');
     });
+    document.getElementById('addAccountBtn2')?.addEventListener('click', () => {
+        openModal('accountModal');
+    });
     
-    // Add transaction button
+    // Add transaction buttons (multiple instances)
     document.getElementById('addTransactionBtn')?.addEventListener('click', () => {
         openModal('transactionModal');
     });
+    document.getElementById('addTransactionBtn2')?.addEventListener('click', () => {
+        openModal('transactionModal');
+    });
     
-    // Add bill button
+    // Add bill buttons (multiple instances)
     document.getElementById('addBillBtn')?.addEventListener('click', () => {
         openModal('billModal');
     });
+    document.getElementById('addBillBtn2')?.addEventListener('click', () => {
+        openModal('billModal');
+    });
     
-    // Reset bills button
+    // Reset bills buttons (multiple instances)
     document.getElementById('resetBillsBtn')?.addEventListener('click', resetAllBills);
+    document.getElementById('resetBillsBtn2')?.addEventListener('click', resetAllBills);
     
-    // Add savings goal button
+    // Add savings goal buttons (multiple instances)
     document.getElementById('addSavingsGoalBtn')?.addEventListener('click', () => {
         openModal('savingsGoalModal');
     });
+    document.getElementById('addSavingsGoalBtn2')?.addEventListener('click', () => {
+        openModal('savingsGoalModal');
+    });
     
-    // Category management button
+    // Category management buttons (multiple instances)
     document.getElementById('manageCategoriesBtn')?.addEventListener('click', showCategoryManagement);
+    document.getElementById('manageCategoriesBtn2')?.addEventListener('click', showCategoryManagement);
     
     // Category action buttons
     document.getElementById('renameCategoryBtn')?.addEventListener('click', renameCategory);
@@ -374,6 +417,17 @@ function setupEventListeners() {
     
     // Goal funds form
     document.getElementById('goalFundsForm')?.addEventListener('submit', handleGoalFundsSubmit);
+    
+    // Handle "View All" navigation links
+    document.querySelectorAll('.nav-item-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = link.getAttribute('data-section');
+            if (section && window.sidebarNav) {
+                window.sidebarNav.navigateToSection(section);
+            }
+        });
+    });
 }
 
 // Handle account form submission

@@ -3,131 +3,431 @@
 {% block title %}Dashboard - Budget Tracker{% endblock %}
 
 {% block content %}
-<div class="dashboard-container">
-    <header class="dashboard-header">
-        <div class="glass-card header-card">
-            <h1>Dashboard</h1>
-            <div class="header-actions">
-                <button id="addAccountBtn" class="btn btn-primary">Add Account</button>
-                <button id="addTransactionBtn" class="btn btn-secondary">Add Transaction</button>
-                <a href="{{ url_for('logout') }}" class="btn btn-outline">Logout</a>
+<div class="app-layout">
+    <!-- Sidebar Toggle -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <span>☰</span>
+    </button>
+    
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    <!-- Glassmorphism Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <div class="logo-icon">GB</div>
+                <div>
+                    <h2 class="sidebar-title">Glass Budget</h2>
+                    <p class="sidebar-subtitle">Financial Dashboard</p>
+                </div>
             </div>
         </div>
-    </header>
+        
+        <div class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <a href="#" class="nav-item active" data-section="dashboard">
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-section="accounts">
+                    <span class="nav-text">Accounts</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Management</div>
+                <a href="#" class="nav-item" data-section="transactions">
+                    <span class="nav-text">Transactions</span>
+                </a>
+                <a href="#" class="nav-item" data-section="bills">
+                    <span class="nav-text">Bills</span>
+                </a>
+                <a href="#" class="nav-item" data-section="categories">
+                    <span class="nav-text">Categories</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Goals</div>
+                <a href="#" class="nav-item" data-section="savings-goals">
+                    <span class="nav-text">Savings Goals</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Account</div>
+                <a href="#" class="nav-item" data-section="account-settings">
+                    <span class="nav-text">Settings</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="sidebar-user">
+            <div class="user-info">
+                <div class="user-avatar">U</div>
+                <div class="user-details">
+                    <h4>User</h4>
+                    <p>Premium Member</p>
+                </div>
+            </div>
+            <div class="user-actions">
+                <a href="{{ url_for('logout') }}" class="btn btn-small btn-outline">Logout</a>
+            </div>
+        </div>
+    </nav>
     
-    <div class="dashboard-grid">
-        <section class="accounts-section">
-            <div class="glass-card">
-                <h2>Accounts</h2>
-                <div id="accountsList" class="accounts-list">
-                    <!-- Accounts will be loaded here -->
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- Dashboard Section -->
+        <section id="dashboard-section" class="dashboard-section active">
+            <div class="dashboard-container">
+                <header class="dashboard-header">
+                    <div class="glass-card header-card">
+                        <h1>Dashboard</h1>
+                        <div class="header-actions">
+                            <button id="addAccountBtn" class="btn btn-primary">Add Account</button>
+                            <button id="addTransactionBtn" class="btn btn-secondary">Add Transaction</button>
+                        </div>
+                    </div>
+                </header>
+                
+                <div class="dashboard-grid">
+                    <section class="accounts-section">
+                        <div class="glass-card">
+                            <div class="section-header">
+                                <h2>Top Accounts</h2>
+                                <div class="section-actions">
+                                    <a href="#" class="nav-item-link" data-section="accounts" style="color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.9rem;">View All →</a>
+                                </div>
+                            </div>
+                            <div id="accountsList" class="accounts-list">
+                                <!-- Top 3 accounts will be loaded here -->
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <section class="transactions-section">
+                        <div class="glass-card">
+                            <div class="section-header">
+                                <h2>Recent Transactions</h2>
+                                <div class="section-actions">
+                                    <select id="transactionCategoryFilter" class="category-filter">
+                                        <option value="">All Categories</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="transactionsList" class="transactions-list">
+                                <!-- Transactions will be loaded here -->
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <section class="bills-section">
+                        <div class="glass-card">
+                            <div class="bills-header">
+                                <h2>Bills Tracker</h2>
+                                <div class="bills-actions">
+                                    <select id="billCategoryFilter" class="category-filter">
+                                        <option value="">All Categories</option>
+                                    </select>
+                                    <button id="addBillBtn2" class="btn btn-small btn-primary">Add Bill</button>
+                                    <button id="resetBillsBtn2" class="btn btn-small btn-outline">Reset All</button>
+                                </div>
+                            </div>
+                            <div id="billsList" class="bills-list">
+                                <!-- Bills will be loaded here -->
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
         </section>
         
-        <section class="transactions-section">
-            <div class="glass-card">
-                <div class="section-header">
-                    <h2>Recent Transactions</h2>
-                    <div class="section-actions">
-                        <select id="transactionCategoryFilter" class="category-filter">
-                            <option value="">All Categories</option>
-                        </select>
+        <!-- Accounts Section -->
+        <section id="accounts-section" class="dashboard-section">
+            <div class="dashboard-container">
+                <header class="dashboard-header">
+                    <div class="glass-card header-card">
+                        <h1>Account Management</h1>
+                        <div class="header-actions">
+                            <button id="addAccountBtn2" class="btn btn-primary">Add Account</button>
+                            <button id="exportAccountsBtn" class="btn btn-secondary">Export Data</button>
+                        </div>
+                    </div>
+                </header>
+                
+                <!-- Account Overview Stats -->
+                <div class="account-stats-grid">
+                    <div class="glass-card stat-card">
+                        <h3>Total Balance</h3>
+                        <div class="stat-value" id="totalAccountBalance">$0</div>
+                        <div class="stat-subtitle">Across all accounts</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <h3>Total Assets</h3>
+                        <div class="stat-value positive" id="totalAssets">$0</div>
+                        <div class="stat-subtitle">Checking & Savings</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <h3>Total Debt</h3>
+                        <div class="stat-value negative" id="totalDebt">$0</div>
+                        <div class="stat-subtitle">Credit & Loans</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <h3>Credit Utilization</h3>
+                        <div class="stat-value" id="avgCreditUtilization">0%</div>
+                        <div class="stat-subtitle">Average across cards</div>
                     </div>
                 </div>
-                <div id="transactionsList" class="transactions-list">
-                    <!-- Transactions will be loaded here -->
+                
+                <!-- Account Filters -->
+                <div class="glass-card">
+                    <div class="account-filters">
+                        <h2>Account Filters</h2>
+                        <div class="filter-controls">
+                            <select id="accountTypeFilter" class="filter-select">
+                                <option value="">All Account Types</option>
+                                <option value="checking">Checking</option>
+                                <option value="savings">Savings</option>
+                                <option value="credit">Credit Cards</option>
+                                <option value="investment">Investment</option>
+                            </select>
+                            <select id="accountStatusFilter" class="filter-select">
+                                <option value="">All Statuses</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                            <input type="text" id="accountSearchInput" placeholder="Search accounts..." class="search-input">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Detailed Accounts List -->
+                <div class="glass-card">
+                    <div class="accounts-table-header">
+                        <h2>Account Details</h2>
+                        <div class="table-controls">
+                            <select id="sortAccountsBy" class="filter-select">
+                                <option value="name">Sort by Name</option>
+                                <option value="balance">Sort by Balance</option>
+                                <option value="type">Sort by Type</option>
+                                <option value="created">Sort by Date Created</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="accounts-table-container">
+                        <table class="accounts-table" id="accountsTable">
+                            <thead>
+                                <tr>
+                                    <th>Account Name</th>
+                                    <th>Type</th>
+                                    <th>Balance</th>
+                                    <th>Credit Info</th>
+                                    <th>Last Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountsTableBody">
+                                <!-- Account rows will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Account Analytics -->
+                <div class="glass-card">
+                    <h2>Account Analytics</h2>
+                    <div class="account-analytics">
+                        <div class="analytics-item">
+                            <h4>Account Distribution</h4>
+                            <div id="accountTypeChart" class="chart-container">
+                                <!-- Chart will be rendered here -->
+                                <div class="account-type-breakdown">
+                                    <div class="breakdown-item">
+                                        <span class="breakdown-dot checking"></span>
+                                        <span class="breakdown-label">Checking: </span>
+                                        <span class="breakdown-value" id="checkingCount">0</span>
+                                    </div>
+                                    <div class="breakdown-item">
+                                        <span class="breakdown-dot savings"></span>
+                                        <span class="breakdown-label">Savings: </span>
+                                        <span class="breakdown-value" id="savingsCount">0</span>
+                                    </div>
+                                    <div class="breakdown-item">
+                                        <span class="breakdown-dot credit"></span>
+                                        <span class="breakdown-label">Credit: </span>
+                                        <span class="breakdown-value" id="creditCount">0</span>
+                                    </div>
+                                    <div class="breakdown-item">
+                                        <span class="breakdown-dot investment"></span>
+                                        <span class="breakdown-label">Investment: </span>
+                                        <span class="breakdown-value" id="investmentCount">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
         
-        <section class="bills-section">
-            <div class="glass-card">
-                <div class="bills-header">
-                    <h2>Bills Tracker</h2>
-                    <div class="bills-actions">
-                        <select id="billCategoryFilter" class="category-filter">
-                            <option value="">All Categories</option>
-                        </select>
-                        <button id="addBillBtn" class="btn btn-small btn-primary">Add Bill</button>
-                        <button id="resetBillsBtn" class="btn btn-small btn-outline">Reset All</button>
+        <!-- Transactions Section -->
+        <section id="transactions-section" class="dashboard-section">
+            <div class="dashboard-container">
+                <header class="dashboard-header">
+                    <div class="glass-card header-card">
+                        <h1>Transaction Management</h1>
+                        <div class="header-actions">
+                            <button id="addTransactionBtn2" class="btn btn-primary">Add Transaction</button>
+                        </div>
                     </div>
-                </div>
-                <div id="billsList" class="bills-list">
-                    <!-- Bills will be loaded here -->
+                </header>
+                
+                <div class="glass-card">
+                    <div class="transaction-management-header">
+                        <h2>All Transactions</h2>
+                        <div class="transaction-management-actions">
+                            <input type="text" id="transactionSearch" placeholder="Search transactions..." class="search-input">
+                            <select id="transactionTypeFilter" class="category-filter">
+                                <option value="">All Types</option>
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
+                            </select>
+                            <select id="transactionManagementCategoryFilter" class="category-filter">
+                                <option value="">All Categories</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="transaction-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalTransactions">0</div>
+                            <div class="stat-label">Total Transactions</div>
+                        </div>
+                        <div class="stat-card income">
+                            <div class="stat-value" id="totalIncome">$0</div>
+                            <div class="stat-label">Total Income</div>
+                        </div>
+                        <div class="stat-card expense">
+                            <div class="stat-value" id="totalExpense">$0</div>
+                            <div class="stat-label">Total Expenses</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="netAmount">$0</div>
+                            <div class="stat-label">Net Amount</div>
+                        </div>
+                    </div>
+                    <div id="allTransactionsList" class="all-transactions-list">
+                        <!-- All transactions will be loaded here -->
+                    </div>
+                    <div class="transaction-pagination">
+                        <button id="prevPage" class="btn btn-small btn-outline">Previous</button>
+                        <span id="pageInfo">Page 1 of 1</span>
+                        <button id="nextPage" class="btn btn-small btn-outline">Next</button>
+                    </div>
                 </div>
             </div>
         </section>
         
-        <section class="savings-goals-section">
-            <div class="glass-card">
-                <div class="savings-goals-header">
-                    <h2>Savings Goals</h2>
-                    <button id="addSavingsGoalBtn" class="btn btn-small btn-primary">Add Goal</button>
-                </div>
-                <div id="savingsGoalsList" class="savings-goals-list">
-                    <!-- Savings goals will be loaded here -->
+        <!-- Bills Section -->
+        <section id="bills-section" class="dashboard-section">
+            <div class="dashboard-container">
+                <header class="dashboard-header">
+                    <div class="glass-card header-card">
+                        <h1>Bills Tracker</h1>
+                        <div class="header-actions">
+                            <button id="addBillBtn" class="btn btn-primary">Add Bill</button>
+                            <button id="resetBillsBtn" class="btn btn-outline">Reset All</button>
+                        </div>
+                    </div>
+                </header>
+                
+                <div class="glass-card">
+                    <div class="bills-header">
+                        <h2>Your Bills</h2>
+                        <div class="bills-actions">
+                            <select id="billCategoryFilter" class="category-filter">
+                                <option value="">All Categories</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="billsList" class="bills-list">
+                        <!-- Bills will be loaded here -->
+                    </div>
                 </div>
             </div>
         </section>
         
-        <section class="transaction-management-section">
-            <div class="glass-card">
-                <div class="transaction-management-header">
-                    <h2>Transaction Management</h2>
-                    <div class="transaction-management-actions">
-                        <input type="text" id="transactionSearch" placeholder="Search transactions..." class="search-input">
-                        <select id="transactionTypeFilter" class="category-filter">
-                            <option value="">All Types</option>
-                            <option value="income">Income</option>
-                            <option value="expense">Expense</option>
-                        </select>
-                        <select id="transactionManagementCategoryFilter" class="category-filter">
-                            <option value="">All Categories</option>
-                        </select>
+        <!-- Categories Section -->
+        <section id="categories-section" class="dashboard-section">
+            <div class="dashboard-container">
+                <header class="dashboard-header">
+                    <div class="glass-card header-card">
+                        <h1>Categories</h1>
+                        <div class="header-actions">
+                            <button id="manageCategoriesBtn" class="btn btn-primary">Manage Categories</button>
+                        </div>
                     </div>
-                </div>
-                <div class="transaction-stats">
-                    <div class="stat-card">
-                        <div class="stat-value" id="totalTransactions">0</div>
-                        <div class="stat-label">Total Transactions</div>
+                </header>
+                
+                <div class="glass-card">
+                    <h2>Category Overview</h2>
+                    <div id="categoriesList" class="categories-list">
+                        <!-- Categories will be loaded here -->
                     </div>
-                    <div class="stat-card income">
-                        <div class="stat-value" id="totalIncome">$0</div>
-                        <div class="stat-label">Total Income</div>
-                    </div>
-                    <div class="stat-card expense">
-                        <div class="stat-value" id="totalExpense">$0</div>
-                        <div class="stat-label">Total Expenses</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="netAmount">$0</div>
-                        <div class="stat-label">Net Amount</div>
-                    </div>
-                </div>
-                <div id="allTransactionsList" class="all-transactions-list">
-                    <!-- All transactions will be loaded here -->
-                </div>
-                <div class="transaction-pagination">
-                    <button id="prevPage" class="btn btn-small btn-outline">Previous</button>
-                    <span id="pageInfo">Page 1 of 1</span>
-                    <button id="nextPage" class="btn btn-small btn-outline">Next</button>
                 </div>
             </div>
         </section>
         
-        <section class="categories-section">
-            <div class="glass-card">
-                <div class="categories-header">
-                    <h2>Categories</h2>
-                    <button id="manageCategoriesBtn" class="btn btn-small btn-secondary">Manage Categories</button>
-                </div>
-                <div id="categoriesList" class="categories-list">
-                    <!-- Categories will be loaded here -->
+        <!-- Savings Goals Section -->
+        <section id="savings-goals-section" class="dashboard-section">
+            <div class="dashboard-container">
+                <header class="dashboard-header">
+                    <div class="glass-card header-card">
+                        <h1>Savings Goals</h1>
+                        <div class="header-actions">
+                            <button id="addSavingsGoalBtn" class="btn btn-primary">Add Goal</button>
+                        </div>
+                    </div>
+                </header>
+                
+                <div class="glass-card">
+                    <h2>Your Goals</h2>
+                    <div id="savingsGoalsList" class="savings-goals-list">
+                        <!-- Savings goals will be loaded here -->
+                    </div>
                 </div>
             </div>
         </section>
-    </div>
+        
+        <!-- Account Settings Section -->
+        <section id="account-settings-section" class="dashboard-section">
+            <div class="dashboard-container">
+                <header class="dashboard-header">
+                    <div class="glass-card header-card">
+                        <h1>Account Settings</h1>
+                    </div>
+                </header>
+                
+                <div class="glass-card">
+                    <h2>Profile Information</h2>
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" value="Current User" disabled class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" value="user@example.com" disabled class="form-control">
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary">Change Password</button>
+                        <button class="btn btn-outline">Export Data</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
 </div>
 
 <!-- Modals -->
@@ -360,5 +660,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+<script src="{{ url_for('static', filename='js/accounts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}
