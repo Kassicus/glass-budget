@@ -670,6 +670,16 @@ def withdraw_funds_from_goal(goal_id):
         'message': f'Withdrew {amount_to_withdraw} from {goal.name}!'
     })
 
+@app.route('/api/user/profile', methods=['GET'])
+@login_required
+def get_user_profile():
+    return jsonify({
+        'id': current_user.id,
+        'username': current_user.username,
+        'email': current_user.email,
+        'created_at': current_user.created_at.isoformat()
+    })
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

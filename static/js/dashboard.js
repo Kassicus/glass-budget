@@ -6,6 +6,7 @@ let categories = [];
 let savingsGoals = [];
 let filteredTransactions = [];
 let filteredBills = [];
+let currentUser = null;
 
 // Transaction management state
 let allTransactions = [];
@@ -26,6 +27,7 @@ const allTransactionsList = document.getElementById('allTransactionsList');
 // Initialize dashboard - will be called by sidebar navigation
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
+    loadUserProfile();
     // Don't auto-load data here - let sidebar navigation handle it
 });
 
@@ -213,15 +215,19 @@ function renderTransactions() {
 function renderBills() {
     const dataToRender = filteredBills;
     
+    const noBillsMessage = '<p style="color: rgba(255,255,255,0.7); text-align: center;">No bills found.</p>';
+    
     if (!dataToRender.length) {
-        billsList.innerHTML = '<p style="color: rgba(255,255,255,0.7); text-align: center;">No bills found.</p>';
+        if (billsList) billsList.innerHTML = noBillsMessage;
+        const dedicatedBillsList = document.getElementById('dedicatedBillsList');
+        if (dedicatedBillsList) dedicatedBillsList.innerHTML = noBillsMessage;
         return;
     }
     
     const currentDate = new Date();
     const sortedBills = dataToRender.sort((a, b) => a.day_of_month - b.day_of_month);
     
-    billsList.innerHTML = sortedBills.map(bill => {
+    const billsHTML = sortedBills.map(bill => {
         const currentMonthDueDate = new Date(bill.current_month_due_date);
         const isOverdue = bill.is_overdue;
         const isDueSoon = currentMonthDueDate <= new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000) && !bill.is_paid;
@@ -252,6 +258,11 @@ function renderBills() {
             </div>
         `;
     }).join('');
+    
+    // Render to both dashboard and dedicated bills page
+    if (billsList) billsList.innerHTML = billsHTML;
+    const dedicatedBillsList = document.getElementById('dedicatedBillsList');
+    if (dedicatedBillsList) dedicatedBillsList.innerHTML = billsHTML;
 }
 
 // Render savings goals
@@ -363,6 +374,10 @@ function setupEventListeners() {
     });
     
     document.getElementById('billCategoryFilter')?.addEventListener('change', (e) => {
+        filterBillsByCategory(e.target.value);
+    });
+    
+    document.getElementById('dedicatedBillCategoryFilter')?.addEventListener('change', (e) => {
         filterBillsByCategory(e.target.value);
     });
     
@@ -842,6 +857,11 @@ async function loadCategories() {
     }
 }
 
+// Load bill categories (called by sidebar for bills page)
+async function loadBillCategories() {
+    await loadCategories();
+}
+
 // Render categories
 function renderCategories() {
     if (!categories.length) {
@@ -870,6 +890,7 @@ function renderCategories() {
 function updateCategoryFilters() {
     const transactionFilter = document.getElementById('transactionCategoryFilter');
     const billFilter = document.getElementById('billCategoryFilter');
+    const dedicatedBillFilter = document.getElementById('dedicatedBillCategoryFilter');
     const categorySelect = document.getElementById('categorySelect');
     const transactionManagementFilter = document.getElementById('transactionManagementCategoryFilter');
     
@@ -883,6 +904,10 @@ function updateCategoryFilters() {
     
     if (billFilter) {
         billFilter.innerHTML = '<option value="">All Categories</option>' + categoryOptions;
+    }
+    
+    if (dedicatedBillFilter) {
+        dedicatedBillFilter.innerHTML = '<option value="">All Categories</option>' + categoryOptions;
     }
     
     if (categorySelect) {
@@ -1243,4 +1268,44 @@ function manageFunds(goalId) {
     document.getElementById('fundsAction').value = 'add';
     
     openModal('goalFundsModal');
+}
+
+// Load user profile data
+async function loadUserProfile() {
+    try {
+        currentUser = await apiRequest('/api/user/profile');
+        updateUserInterface();
+    } catch (error) {
+        console.error('Failed to load user profile:', error);
+    }
+}
+
+// Update UI elements with real user data
+function updateUserInterface() {
+    if (!currentUser) return;
+    
+    // Update sidebar user info
+    const sidebarUsername = document.getElementById('sidebarUsername');
+    const userAvatar = document.getElementById('userAvatar');
+    
+    if (sidebarUsername) {
+        sidebarUsername.textContent = currentUser.username;
+    }
+    
+    if (userAvatar) {
+        // Set avatar to first letter of username
+        userAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
+    }
+    
+    // Update account settings
+    const settingsUsername = document.getElementById('settingsUsername');
+    const settingsEmail = document.getElementById('settingsEmail');
+    
+    if (settingsUsername) {
+        settingsUsername.value = currentUser.username;
+    }
+    
+    if (settingsEmail) {
+        settingsEmail.value = currentUser.email;
+    }
 }
