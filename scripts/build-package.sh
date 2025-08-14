@@ -109,9 +109,18 @@ if ! command -v dpkg-buildpackage >/dev/null 2>&1; then
         dh-python \
         python3-all \
         python3-setuptools \
+        python3-pip \
+        python3-venv \
         debhelper
 else
     log "Build dependencies already available"
+fi
+
+# Validate Python dependencies can be installed
+log "Validating Python dependencies..."
+if ! python3 -m pip install --dry-run -r requirements.txt >/dev/null 2>&1; then
+    error "Python dependencies validation failed"
+    warn "This may cause issues during package installation"
 fi
 
 # Build the package
