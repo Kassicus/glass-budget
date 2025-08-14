@@ -48,11 +48,6 @@ def test_user(client):
         username = f'testuser_{unique_id}'
         email = f'test_{unique_id}@example.com'
         
-        # Check if user already exists and return it
-        existing_user = User.query.filter_by(username=username).first()
-        if existing_user:
-            return existing_user
-            
         user = User(
             username=username,
             email=email,
@@ -60,7 +55,21 @@ def test_user(client):
         )
         db.session.add(user)
         db.session.commit()
-        return user
+        
+        # Store the attributes we'll need to avoid detached instance errors
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email
+        }
+        
+        # Return a simple object with the needed attributes
+        class TestUser:
+            def __init__(self, data):
+                for key, value in data.items():
+                    setattr(self, key, value)
+        
+        return TestUser(user_data)
 
 
 class TestBasicFunctionality:
