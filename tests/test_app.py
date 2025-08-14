@@ -12,13 +12,15 @@ from models import User, Account, Transaction, Bill, SavingsGoal
 @pytest.fixture
 def client():
     """Create a test client for the Flask application."""
-    # Use in-memory SQLite for tests unless DATABASE_URL is set (CI environment)
+    # Use environment database URL if available (for CI), otherwise in-memory SQLite
     if os.environ.get('DATABASE_URL'):
         # Use the configured database (PostgreSQL in CI)
         app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+        db_cleanup = False
     else:
         # Use in-memory SQLite for local testing
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+        db_cleanup = True
     
     app.config['TESTING'] = True
     app.config['SECRET_KEY'] = 'test-secret-key'
@@ -30,7 +32,7 @@ def client():
         yield client
         
     # Clean up database
-    if not os.environ.get('DATABASE_URL'):
+    if db_cleanup and not os.environ.get('DATABASE_URL'):
         # Only clean up if using in-memory database
         with app.app_context():
             db.drop_all()

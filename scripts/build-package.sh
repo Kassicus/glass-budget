@@ -27,7 +27,7 @@ error() {
 PACKAGE_NAME="glass-budget"
 SOURCE_DIR=$(pwd)
 BUILD_DIR="/tmp/glass-budget-build"
-VERSION=${VERSION:-$(date +%Y%m%d)-$(git rev-parse --short HEAD)}
+VERSION=${VERSION:-$(date +%Y%m%d)-$(git rev-parse --short HEAD 2>/dev/null || echo "nogit")}
 
 log "Building Glass Budget Debian package"
 log "Version: $VERSION"
@@ -58,7 +58,7 @@ $PACKAGE_NAME ($VERSION-1) unstable; urgency=medium
 
   * Automated build for version $VERSION
   * Built on $(date)
-  * Git commit: $(git rev-parse HEAD)
+  * Git commit: $(git rev-parse HEAD 2>/dev/null || echo "unknown")
 
  -- Glass Budget CI <ci@glass-budget.local>  $(date -R)
 
@@ -95,8 +95,9 @@ for file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-# Install build dependencies only if not already installed (CI optimization)
-if ! command -v dpkg-buildpackage >/dev/null 2>&1; then
+# Install build dependencies (if we have sudo access)
+log "Checking build dependencies..."
+if sudo -n true 2>/dev/null; then
     log "Installing build dependencies..."
     sudo apt-get update
     sudo apt-get install -y \
@@ -108,18 +109,10 @@ if ! command -v dpkg-buildpackage >/dev/null 2>&1; then
         dh-python \
         python3-all \
         python3-setuptools \
-        python3-pip \
-        python3-venv \
         debhelper
 else
-    log "Build dependencies already available"
-fi
-
-# Validate Python dependencies can be installed
-log "Validating Python dependencies..."
-if ! python3 -m pip install --dry-run -r requirements.txt >/dev/null 2>&1; then
-    error "Python dependencies validation failed"
-    warn "This may cause issues during package installation"
+    warn "No sudo access - assuming build dependencies are already installed"
+    warn "If build fails, install: build-essential devscripts dh-make fakeroot lintian dh-python python3-all debhelper"
 fi
 
 # Build the package
@@ -137,7 +130,7 @@ if ! dpkg-buildpackage -us -uc -b; then
     exit 1
 fi
 
-# Move packages to source directory
+# Move packages to source directory and fix permissions
 log "Moving packages to source directory..."
 mv ../*.deb "$SOURCE_DIR/" 2>/dev/null || warn "No .deb files found to move"
 mv ../*.dsc "$SOURCE_DIR/" 2>/dev/null || warn "No .dsc files found to move"
@@ -147,6 +140,13 @@ mv ../*.changes "$SOURCE_DIR/" 2>/dev/null || warn "No .changes files found to m
 # List what we actually have in source directory
 log "Build artifacts in source directory:"
 ls -la "$SOURCE_DIR"/*.deb "$SOURCE_DIR"/*.dsc "$SOURCE_DIR"/*.tar.gz "$SOURCE_DIR"/*.changes 2>/dev/null || warn "No build artifacts found"
+
+# Fix file permissions to prevent apt access issues
+log "Fixing package file permissions..."
+chmod 644 "$SOURCE_DIR"/*.deb 2>/dev/null || true
+chmod 644 "$SOURCE_DIR"/*.dsc 2>/dev/null || true
+chmod 644 "$SOURCE_DIR"/*.tar.gz 2>/dev/null || true
+chmod 644 "$SOURCE_DIR"/*.changes 2>/dev/null || true
 
 # Run lintian checks
 log "Running package quality checks..."

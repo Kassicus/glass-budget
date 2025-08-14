@@ -40,7 +40,9 @@ override_dh_auto_install:
 	
 	# Install logrotate configuration
 	mkdir -p debian/glass-budget/etc/logrotate.d
-	test -f config/logrotate && cp config/logrotate debian/glass-budget/etc/logrotate.d/glass-budget
+	if [ -f config/logrotate ]; then \
+		cp config/logrotate debian/glass-budget/etc/logrotate.d/glass-budget; \
+	fi
 	
 	# Install scripts
 	mkdir -p debian/glass-budget/usr/bin
