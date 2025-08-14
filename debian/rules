@@ -27,8 +27,8 @@ override_dh_auto_install:
 	test -d templates && cp -r templates debian/glass-budget/opt/glass-budget/
 	
 	# Install systemd service file
-	mkdir -p debian/glass-budget/lib/systemd/system
-	test -f debian/glass-budget.service && cp debian/glass-budget.service debian/glass-budget/lib/systemd/system/
+	mkdir -p debian/glass-budget/usr/lib/systemd/system
+	test -f debian/glass-budget.service && cp debian/glass-budget.service debian/glass-budget/usr/lib/systemd/system/
 	
 	# Install nginx configuration
 	mkdir -p debian/glass-budget/etc/nginx/sites-available
