@@ -1,18 +1,18 @@
-Flask==2.3.3
+Flask==3.1.1
 Flask-SQLAlchemy==3.0.5
 Flask-Login==0.6.3
 Flask-WTF==1.1.1
 WTForms==3.0.1
-Werkzeug==2.3.7
+Werkzeug==3.0.6
 python-dotenv==1.0.0
 email-validator==2.0.0
 bcrypt==4.0.1
 APScheduler==3.10.4
 
 # Production dependencies
-gunicorn==21.2.0
+gunicorn==23.0.0
 psycopg2-binary==2.9.7
-pymysql==1.1.0
+pymysql==1.1.1
 redis==4.6.0
 celery==5.3.1
 
@@ -24,10 +24,4 @@ structlog==23.1.0
 flask-talisman==1.1.0
 flask-limiter==3.5.0
 
-# Development/testing (commented for production)
-# pytest==7.4.0
-# pytest-flask==1.2.0
-# pytest-cov==4.1.0
-# coverage==7.3.0
-# flake8==6.0.0
-# black==23.7.0
+# Development/testing dependencies are in requirements-test.txt

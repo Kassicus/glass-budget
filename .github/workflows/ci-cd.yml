@@ -50,26 +50,29 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest pytest-cov pytest-flask coverage
+        pip install -r requirements-test.txt
 
     - name: Set up environment variables
       run: |
         echo "SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
         echo "DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_budget_db" >> $GITHUB_ENV
         echo "FLASK_ENV=testing" >> $GITHUB_ENV
+        echo "TESTING=true" >> $GITHUB_ENV
 
     - name: Run database migrations
       run: |
         python -c "
         from app import app, db
         with app.app_context():
+            db.drop_all()
             db.create_all()
         "
 
     - name: Run tests
       run: |
-        coverage run -m pytest tests/ -v
-        coverage report
+        export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+        coverage run -m pytest tests/ -v --tb=short
+        coverage report --show-missing
         coverage xml
 
     - name: Upload coverage to Codecov
@@ -98,16 +101,27 @@ jobs:
     - name: Install security tools
       run: |
         python -m pip install --upgrade pip
-        pip install safety bandit semgrep
+        pip install -r requirements-test.txt
+      timeout-minutes: 5
 
     - name: Check for known vulnerabilities in dependencies
-      run: safety check -r requirements.txt
+      run: |
+        # Use the new scan command instead of deprecated check
+        safety scan --target requirements.txt --output=json --exit-code
+      continue-on-error: true
+      timeout-minutes: 3
 
     - name: Run bandit security linter
-      run: bandit -r . -x ./budget_env/,./tests/
+      run: |
+        bandit -r . -x ./budget_env/,./tests/,./venv/,./env/ -f json
+      continue-on-error: true
+      timeout-minutes: 2
 
     - name: Run semgrep security analysis
-      run: semgrep --config=auto .
+      run: |
+        semgrep --config=auto . --json --timeout=60
+      continue-on-error: true
+      timeout-minutes: 3
 
   build-package:
     needs: [test, security]

@@ -12,8 +12,14 @@ from models import User, Account, Transaction, Bill, SavingsGoal
 @pytest.fixture
 def client():
     """Create a test client for the Flask application."""
-    # Create a temporary file for the test database
-    db_fd, app.config['DATABASE_URI'] = tempfile.mkstemp()
+    # Use in-memory SQLite for tests unless DATABASE_URL is set (CI environment)
+    if os.environ.get('DATABASE_URL'):
+        # Use the configured database (PostgreSQL in CI)
+        app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+    else:
+        # Use in-memory SQLite for local testing
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    
     app.config['TESTING'] = True
     app.config['SECRET_KEY'] = 'test-secret-key'
     app.config['WTF_CSRF_ENABLED'] = False
@@ -22,23 +28,27 @@ def client():
         with app.app_context():
             db.create_all()
         yield client
-    
-    os.close(db_fd)
-    os.unlink(app.config['DATABASE_URI'])
+        
+    # Clean up database
+    if not os.environ.get('DATABASE_URL'):
+        # Only clean up if using in-memory database
+        with app.app_context():
+            db.drop_all()
 
 
 @pytest.fixture
-def test_user():
+def test_user(client):
     """Create a test user."""
     from werkzeug.security import generate_password_hash
-    user = User(
-        username='testuser',
-        email='test@example.com',
-        password_hash=generate_password_hash('testpassword')
-    )
-    db.session.add(user)
-    db.session.commit()
-    return user
+    with app.app_context():
+        user = User(
+            username='testuser',
+            email='test@example.com',
+            password_hash=generate_password_hash('testpassword')
+        )
+        db.session.add(user)
+        db.session.commit()
+        return user
 
 
 class TestBasicFunctionality:
