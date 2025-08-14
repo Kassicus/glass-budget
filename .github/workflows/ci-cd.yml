@@ -64,8 +64,12 @@ jobs:
         python -c "
         from app import app, db
         with app.app_context():
-            db.drop_all()
+            try:
+                db.drop_all()
+            except:
+                pass  # Database might not exist yet
             db.create_all()
+            print('Database initialized successfully')
         "
 
     - name: Run tests

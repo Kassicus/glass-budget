@@ -40,10 +40,22 @@ def client():
 def test_user(client):
     """Create a test user."""
     from werkzeug.security import generate_password_hash
+    import uuid
+    
     with app.app_context():
+        # Generate unique username and email to avoid conflicts
+        unique_id = str(uuid.uuid4())[:8]
+        username = f'testuser_{unique_id}'
+        email = f'test_{unique_id}@example.com'
+        
+        # Check if user already exists and return it
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            return existing_user
+            
         user = User(
-            username='testuser',
-            email='test@example.com',
+            username=username,
+            email=email,
             password_hash=generate_password_hash('testpassword')
         )
         db.session.add(user)
@@ -91,7 +103,7 @@ class TestBasicFunctionality:
         """Test user login functionality."""
         response = client.post('/login',
                              json={
-                                 'email': 'test@example.com',
+                                 'email': test_user.email,
                                  'password': 'testpassword'
                              },
                              content_type='application/json')
