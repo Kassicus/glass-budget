@@ -86,7 +86,6 @@ REQUIRED_FILES=(
     "debian/control"
     "debian/rules"
     "debian/changelog"
-    "debian/compat"
 )
 
 for file in "${REQUIRED_FILES[@]}"; do
