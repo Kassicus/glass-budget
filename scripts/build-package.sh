@@ -163,14 +163,20 @@ if [ -f "$DEB_FILE" ]; then
     
     # Show package contents
     log "Package contents:"
-    dpkg -c "$DEB_FILE" | head -20
-    if [ $(dpkg -c "$DEB_FILE" | wc -l) -gt 20 ]; then
-        echo "... (truncated, $(dpkg -c "$DEB_FILE" | wc -l) total files)"
+    if ! dpkg -c "$DEB_FILE" | head -20; then
+        warn "Could not display package contents (non-fatal)"
+    else
+        TOTAL_FILES=$(dpkg -c "$DEB_FILE" 2>/dev/null | wc -l || echo "unknown")
+        if [[ "$TOTAL_FILES" =~ ^[0-9]+$ ]] && [ "$TOTAL_FILES" -gt 20 ]; then
+            echo "... (truncated, $TOTAL_FILES total files)"
+        fi
     fi
     
     # Show package info
     log "Package information:"
-    dpkg -I "$DEB_FILE"
+    if ! dpkg -I "$DEB_FILE"; then
+        warn "Could not display package information (non-fatal)"
+    fi
 else
     error "No package file found after build"
     exit 1
