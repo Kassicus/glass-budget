@@ -1,0 +1,28 @@
+Format: 1.8
+Date: Thu, 14 Aug 2025 22:00:46 +0000
+Source: glass-budget
+Binary: glass-budget
+Built-For-Profiles: noudeb
+Architecture: all
+Version: 1.1.1-1
+Distribution: unstable
+Urgency: medium
+Maintainer: Glass Budget Team <support@glass-budget.local>
+Changed-By: Glass Budget CI <ci@glass-budget.local>
+Description:
+ glass-budget - Modern glass-style budget tracking web application
+Changes:
+ glass-budget (1.1.1-1) unstable; urgency=medium
+ .
+   * Automated build for version 1.1.1
+   * Built on Thu Aug 14 22:00:46 UTC 2025
+   * Git commit: unknown
+Checksums-Sha1:
+ b57fb72b7d9c467c401eed7ea94b51441287f767 45718 glass-budget_1.1.1-1_all.deb
+ 9ba53ed47b15d12c8252fd7fcbdb58be3b4193a5 8011 glass-budget_1.1.1-1_amd64.buildinfo
+Checksums-Sha256:
+ d4bb6df2711a1a16dae4961b43552ecff45571b6767d180be873fc344941e916 45718 glass-budget_1.1.1-1_all.deb
+ 0e347655380d6e2f670e26f7e4acc8122e1e42d34be3ca492444aa5eb93b6fc8 8011 glass-budget_1.1.1-1_amd64.buildinfo
+Files:
+ 21a1c1d6ed305db22daa5500b6773a2d 45718 web optional glass-budget_1.1.1-1_all.deb
+ 39f2f4df36f8759f0251eaca6d320abe 8011 web optional glass-budget_1.1.1-1_amd64.buildinfo

@@ -63,10 +63,26 @@ case "$1" in
         if [ -f /opt/glass-budget/requirements.txt ]; then
             echo "Installing Python dependencies..."
             if sudo -u glass-budget /opt/glass-budget/venv/bin/pip install --upgrade pip; then
-                if sudo -u glass-budget /opt/glass-budget/venv/bin/pip install -r /opt/glass-budget/requirements.txt; then
-                    echo "Dependencies installed successfully"
+                # First try to install core dependencies (excluding psycopg2-binary)
+                echo "Installing core dependencies..."
+                if sudo -u glass-budget /opt/glass-budget/venv/bin/pip install Flask==3.1.1 Flask-SQLAlchemy==3.0.5 Flask-Login==0.6.3 Flask-WTF==1.2.1 WTForms==3.1.2 Werkzeug==3.1.2 python-dotenv==1.0.0 email-validator==2.0.0 bcrypt==4.0.1 APScheduler==3.10.4 gunicorn==23.0.0; then
+                    echo "Core dependencies installed successfully"
+                    
+                    # Try to install PostgreSQL support (optional)
+                    echo "Attempting to install PostgreSQL support (optional)..."
+                    if sudo -u glass-budget /opt/glass-budget/venv/bin/pip install --prefer-binary psycopg2-binary==2.9.9; then
+                        echo "PostgreSQL support installed successfully"
+                    else
+                        echo "Warning: PostgreSQL support installation failed - PostgreSQL features will not be available"
+                        echo "Application will work with SQLite database instead"
+                    fi
+                    
+                    # Install remaining optional dependencies
+                    echo "Installing monitoring and security dependencies..."
+                    sudo -u glass-budget /opt/glass-budget/venv/bin/pip install prometheus-client==0.17.1 structlog==23.1.0 flask-talisman==1.1.0 flask-limiter==3.5.0 || echo "Warning: Some optional dependencies failed to install"
+                    
                 else
-                    echo "Failed to install Python dependencies" >&2
+                    echo "Failed to install core Python dependencies" >&2
                     exit 1
                 fi
             else
