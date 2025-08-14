@@ -12,10 +12,16 @@ case "$1" in
         fi
         
         # Set ownership and permissions
-        chown -R glass-budget:glass-budget /opt/glass-budget
-        chown -R glass-budget:glass-budget /var/lib/glass-budget
-        chown -R glass-budget:glass-budget /var/log/glass-budget
-        chown root:glass-budget /etc/glass-budget/glass-budget.env
+        chown -R glass-budget:glass-budget /opt/glass-budget || true
+        chown -R glass-budget:glass-budget /var/lib/glass-budget || true
+        chown -R glass-budget:glass-budget /var/log/glass-budget || true
+        chown root:glass-budget /etc/glass-budget/glass-budget.env || true
+        
+        # Ensure proper directory permissions
+        chmod 755 /opt/glass-budget
+        chmod 755 /var/lib/glass-budget
+        chmod 755 /var/log/glass-budget
+        chmod 750 /etc/glass-budget
         
         # Create Python virtual environment
         if [ ! -d /opt/glass-budget/venv ]; then

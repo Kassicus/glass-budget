@@ -113,6 +113,8 @@ jobs:
     needs: [test, security]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
     
     steps:
     - uses: actions/checkout@v4
@@ -211,15 +213,28 @@ jobs:
         draft: false
         prerelease: false
 
-    - name: Upload DEB Package
+    - name: Find and Upload DEB Package
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        # Find the actual .deb file (handles dynamic naming)
+        DEB_FILE=$(find . -name "*.deb" -type f | head -1)
+        if [ -z "$DEB_FILE" ]; then
+          echo "ERROR: No .deb file found"
+          exit 1
+        fi
+        echo "Found DEB file: $DEB_FILE"
+        echo "DEB_FILE_PATH=$DEB_FILE" >> $GITHUB_ENV
+        echo "DEB_FILE_NAME=$(basename $DEB_FILE)" >> $GITHUB_ENV
+
+    - name: Upload DEB Package Asset
       if: startsWith(github.ref, 'refs/tags/')
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./glass-budget_${{ steps.version.outputs.VERSION }}_all.deb
-        asset_name: glass-budget_${{ steps.version.outputs.VERSION }}_all.deb
+        asset_path: ${{ env.DEB_FILE_PATH }}
+        asset_name: ${{ env.DEB_FILE_NAME }}
         asset_content_type: application/vnd.debian.binary-package
 
     - name: Upload Installation Script
@@ -233,15 +248,29 @@ jobs:
         asset_name: install.sh
         asset_content_type: application/x-sh
 
-    - name: Upload Source Package
+    - name: Find and Upload Source Package
       if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        # Find the actual .tar.gz file
+        TAR_FILE=$(find . -name "*.tar.gz" -type f | head -1)
+        if [ -n "$TAR_FILE" ]; then
+          echo "Found TAR file: $TAR_FILE"
+          echo "TAR_FILE_PATH=$TAR_FILE" >> $GITHUB_ENV
+          echo "TAR_FILE_NAME=$(basename $TAR_FILE)" >> $GITHUB_ENV
+        else
+          echo "WARNING: No .tar.gz file found"
+          echo "TAR_FILE_PATH=" >> $GITHUB_ENV
+        fi
+
+    - name: Upload Source Package Asset
+      if: startsWith(github.ref, 'refs/tags/') && env.TAR_FILE_PATH != ''
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./glass-budget_${{ steps.version.outputs.VERSION }}.tar.gz
-        asset_name: glass-budget_${{ steps.version.outputs.VERSION }}.tar.gz
+        asset_path: ${{ env.TAR_FILE_PATH }}
+        asset_name: ${{ env.TAR_FILE_NAME }}
         asset_content_type: application/gzip
 
   deploy-staging:
@@ -251,19 +280,228 @@ jobs:
     environment: staging
     
     steps:
+    - uses: actions/checkout@v4
+
+    - name: Download package artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: debian-packages-${{ needs.build-package.outputs.version }}
+        path: ./artifacts
+
+    - name: Configure SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+
     - name: Deploy to staging server
       run: |
-        echo "Deploying to staging environment"
-        # Add actual deployment steps here based on your infrastructure
+        echo "Deploying to staging environment: ${{ secrets.STAGING_HOST }}"
+        
+        # Find the .deb package
+        DEB_FILE=$(find ./artifacts -name "*.deb" -type f | head -1)
+        if [ -z "$DEB_FILE" ]; then
+          echo "ERROR: No .deb package found in artifacts"
+          exit 1
+        fi
+        
+        echo "Deploying package: $(basename $DEB_FILE)"
+        
+        # Copy package to staging server
+        scp "$DEB_FILE" ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/tmp/
+        
+        # Deploy on staging server
+        ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
+        set -e
+        
+        # Install/upgrade the package
+        sudo apt update
+        sudo apt install -y /tmp/$(basename $DEB_FILE)
+        
+        # Wait for service to start
+        sleep 5
+        
+        # Verify deployment
+        if ! sudo systemctl is-active --quiet glass-budget.service; then
+          echo "ERROR: Service failed to start"
+          sudo journalctl -u glass-budget.service --no-pager -n 20
+          exit 1
+        fi
+        
+        echo "Staging deployment completed successfully"
+        EOF
+
+    - name: Verify staging deployment
+      run: |
+        echo "Verifying staging deployment..."
+        
+        # Health check with retry logic
+        for i in {1..10}; do
+          if curl -f -s http://${{ secrets.STAGING_HOST }}:5001/health > /dev/null; then
+            echo "Health check passed"
+            break
+          elif [ $i -eq 10 ]; then
+            echo "ERROR: Health check failed after 10 attempts"
+            exit 1
+          else
+            echo "Health check attempt $i failed, retrying in 10 seconds..."
+            sleep 10
+          fi
+        done
+
+    - name: Run deployment tests
+      run: |
+        echo "Running basic deployment tests..."
+        
+        # Test API endpoints
+        curl -f -s http://${{ secrets.STAGING_HOST }}:5001/api/accounts > /dev/null || {
+          echo "ERROR: API endpoints not responding"
+          exit 1
+        }
+        
+        echo "All deployment tests passed"
         
   deploy-production:
-    needs: build-package
+    needs: [build-package, deploy-staging]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     environment: production
     
     steps:
+    - uses: actions/checkout@v4
+
+    - name: Download package artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: debian-packages-${{ needs.build-package.outputs.version }}
+        path: ./artifacts
+
+    - name: Configure SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Pre-deployment backup
+      run: |
+        echo "Creating pre-deployment backup..."
+        ssh ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} << 'EOF'
+        set -e
+        
+        # Create backup using admin tool
+        sudo glass-budget-admin backup --auto-name
+        
+        # Verify current service status
+        sudo systemctl status glass-budget.service
+        EOF
+
     - name: Deploy to production server
       run: |
-        echo "Deploying to production environment"
-        # Add actual deployment steps here based on your infrastructure
+        echo "Deploying to production environment: ${{ secrets.PRODUCTION_HOST }}"
+        
+        # Find the .deb package
+        DEB_FILE=$(find ./artifacts -name "*.deb" -type f | head -1)
+        if [ -z "$DEB_FILE" ]; then
+          echo "ERROR: No .deb package found in artifacts"
+          exit 1
+        fi
+        
+        echo "Deploying package: $(basename $DEB_FILE)"
+        
+        # Copy package to production server
+        scp "$DEB_FILE" ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }}:/tmp/
+        
+        # Deploy on production server with rollback capability
+        ssh ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} << 'EOF'
+        set -e
+        
+        # Store current version for potential rollback
+        CURRENT_VERSION=$(dpkg -l | grep glass-budget | awk '{print $3}' || echo "none")
+        echo "Current version: $CURRENT_VERSION"
+        
+        # Install/upgrade the package
+        sudo apt update
+        if ! sudo apt install -y /tmp/$(basename $DEB_FILE); then
+          echo "ERROR: Package installation failed"
+          exit 1
+        fi
+        
+        # Wait for service to start
+        sleep 10
+        
+        # Verify deployment
+        if ! sudo systemctl is-active --quiet glass-budget.service; then
+          echo "ERROR: Service failed to start after upgrade"
+          sudo journalctl -u glass-budget.service --no-pager -n 50
+          exit 1
+        fi
+        
+        echo "Production deployment completed successfully"
+        EOF
+
+    - name: Verify production deployment
+      run: |
+        echo "Verifying production deployment..."
+        
+        # Extended health check with retry logic
+        for i in {1..15}; do
+          if curl -f -s -m 10 http://${{ secrets.PRODUCTION_HOST }}:5001/health > /dev/null; then
+            echo "Health check passed on attempt $i"
+            break
+          elif [ $i -eq 15 ]; then
+            echo "ERROR: Health check failed after 15 attempts"
+            # Trigger rollback
+            ssh ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} << 'EOF'
+            echo "Attempting automatic rollback..."
+            sudo glass-budget-admin rollback-last || echo "Rollback failed, manual intervention required"
+            EOF
+            exit 1
+          else
+            echo "Health check attempt $i failed, retrying in 15 seconds..."
+            sleep 15
+          fi
+        done
+
+    - name: Run production smoke tests
+      run: |
+        echo "Running production smoke tests..."
+        
+        # Test critical API endpoints
+        endpoints=("/health" "/api/accounts" "/api/transactions")
+        
+        for endpoint in "${endpoints[@]}"; do
+          echo "Testing endpoint: $endpoint"
+          if ! curl -f -s -m 10 http://${{ secrets.PRODUCTION_HOST }}:5001$endpoint > /dev/null; then
+            echo "ERROR: Endpoint $endpoint failed"
+            exit 1
+          fi
+        done
+        
+        echo "All production smoke tests passed"
+
+    - name: Post-deployment verification
+      run: |
+        echo "Running post-deployment verification..."
+        
+        ssh ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} << 'EOF'
+        # Check service status
+        sudo systemctl status glass-budget.service
+        
+        # Check logs for any errors
+        if sudo journalctl -u glass-budget.service --since "5 minutes ago" | grep -i error; then
+          echo "WARNING: Errors found in recent logs"
+        fi
+        
+        # Check disk space
+        df -h /var/lib/glass-budget
+        
+        echo "Post-deployment verification completed"
+        EOF
+
+    - name: Notify deployment success
+      run: |
+        echo "Production deployment successful!"
+        echo "Version deployed: $(find ./artifacts -name "*.deb" -type f | head -1 | xargs basename)"
+        echo "Deployment time: $(date)"
