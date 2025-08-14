@@ -12,8 +12,16 @@ from models import User, Account, Transaction, Bill, SavingsGoal
 @pytest.fixture
 def client():
     """Create a test client for the Flask application."""
-    # Create a temporary file for the test database
-    db_fd, app.config['DATABASE_URI'] = tempfile.mkstemp()
+    # Use environment database URL if available (for CI), otherwise SQLite
+    if 'DATABASE_URL' in os.environ:
+        app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
+        db_cleanup = False
+    else:
+        # Create a temporary file for the test database (local testing)
+        db_fd, db_path = tempfile.mkstemp()
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+        db_cleanup = True
+    
     app.config['TESTING'] = True
     app.config['SECRET_KEY'] = 'test-secret-key'
     app.config['WTF_CSRF_ENABLED'] = False
@@ -22,23 +30,36 @@ def client():
         with app.app_context():
             db.create_all()
         yield client
+        
+        # Clean up tables after tests
+        with app.app_context():
+            db.drop_all()
     
-    os.close(db_fd)
-    os.unlink(app.config['DATABASE_URI'])
+    if db_cleanup:
+        os.close(db_fd)
+        os.unlink(db_path)
 
 
 @pytest.fixture
-def test_user():
+def test_user(client):
     """Create a test user."""
     from werkzeug.security import generate_password_hash
-    user = User(
-        username='testuser',
-        email='test@example.com',
-        password_hash=generate_password_hash('testpassword')
-    )
-    db.session.add(user)
-    db.session.commit()
-    return user
+    
+    with app.app_context():
+        user = User(
+            username='testuser',
+            email='test@example.com',
+            password_hash=generate_password_hash('testpassword')
+        )
+        db.session.add(user)
+        db.session.commit()
+        
+        # Return the user ID and re-fetch to avoid detached instance issues
+        user_id = user.id
+        
+    # Re-fetch the user in the same context where it will be used
+    with app.app_context():
+        return User.query.get(user_id)
 
 
 class TestBasicFunctionality:

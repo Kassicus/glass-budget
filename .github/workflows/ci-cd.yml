@@ -101,7 +101,7 @@ jobs:
         pip install safety bandit semgrep
 
     - name: Check for known vulnerabilities in dependencies
-      run: safety check -r requirements.txt
+      run: safety scan -r requirements.txt --output text
 
     - name: Run bandit security linter
       run: bandit -r . -x ./budget_env/,./tests/
