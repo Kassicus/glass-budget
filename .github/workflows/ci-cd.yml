@@ -194,7 +194,7 @@ jobs:
         ls -la *.deb *.dsc *.tar.gz *.changes 2>/dev/null || echo "No build artifacts found in root directory"
 
     - name: Upload package artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: debian-packages-${{ steps.version.outputs.VERSION }}
         path: |
