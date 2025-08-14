@@ -15,16 +15,16 @@ Package: glass-budget
 Architecture: all
 Depends: ${python3:Depends},
          ${misc:Depends},
-         python3-flask,
-         python3-flask-sqlalchemy,
-         python3-flask-login,
-         python3-flask-bcrypt,
+         adduser,
+         python3 (>= 3.7),
          python3-pip,
          python3-venv,
-         postgresql-client | sqlite3,
-         nginx,
-         systemd
-Recommends: postgresql
+         systemd,
+         sudo
+Recommends: nginx,
+         postgresql-client,
+         sqlite3,
+         postgresql
 Suggests: certbot
 Description: Modern glass-style budget tracking web application
  Glass Budget is a modern budgeting tool built with Flask backend

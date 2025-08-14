@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -e
+
+case "$1" in
+    install|upgrade)
+        # Create required directories before package installation
+        mkdir -p /opt/glass-budget
+        mkdir -p /var/lib/glass-budget
+        mkdir -p /var/log/glass-budget
+        mkdir -p /etc/glass-budget
+        ;;
+        
+    abort-upgrade)
+        ;;
+        
+    *)
+        echo "preinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

@@ -21,7 +21,7 @@ NoNewPrivileges=true
 # Security settings
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/glass-budget /var/log/glass-budget /tmp
+ReadWritePaths=/var/lib/glass-budget /var/log/glass-budget /tmp /opt/glass-budget
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

@@ -1,3 +1,26 @@
+glass-budget (1.0.4-1) unstable; urgency=medium
+
+  * Fix critical Debian package installation issues
+  * Add preinst script to create directories before installation
+  * Improve error handling in postinst script with better validation
+  * Fix file permission issues during package build process
+  * Add safety checks for file existence in debian/rules
+  * Update systemd service ReadWritePaths configuration
+  * Simplify dependency management to reduce conflicts
+  * Add validation for required system commands
+  * Improve service startup error handling and reporting
+  * Add package validation test script
+
+ -- Glass Budget Team <support@glass-budget.local>  Wed, 14 Aug 2025 10:53:00 +0000
+
+glass-budget (1.0.3-1) unstable; urgency=medium
+
+  * Production deployment improvements
+  * Enhanced CI/CD pipeline integration
+  * Bug fixes and stability improvements
+
+ -- Glass Budget Team <support@glass-budget.local>  Tue, 13 Aug 2025 12:00:00 +0000
+
 glass-budget (1.0.0-1) unstable; urgency=medium
 
   * Initial release of Glass Budget

@@ -17,44 +17,53 @@ override_dh_auto_test:
 override_dh_auto_install:
 	# Install application files
 	mkdir -p debian/glass-budget/opt/glass-budget
-	cp -r app.py models.py migrate_db.py requirements.txt static templates debian/glass-budget/opt/glass-budget/
+	# Copy main application files if they exist
+	test -f app.py && cp app.py debian/glass-budget/opt/glass-budget/
+	test -f models.py && cp models.py debian/glass-budget/opt/glass-budget/
+	test -f migrate_db.py && cp migrate_db.py debian/glass-budget/opt/glass-budget/
+	test -f requirements.txt && cp requirements.txt debian/glass-budget/opt/glass-budget/
+	# Copy directories if they exist
+	test -d static && cp -r static debian/glass-budget/opt/glass-budget/
+	test -d templates && cp -r templates debian/glass-budget/opt/glass-budget/
 	
 	# Install systemd service file
 	mkdir -p debian/glass-budget/lib/systemd/system
-	cp debian/glass-budget.service debian/glass-budget/lib/systemd/system/
+	test -f debian/glass-budget.service && cp debian/glass-budget.service debian/glass-budget/lib/systemd/system/
 	
 	# Install nginx configuration
 	mkdir -p debian/glass-budget/etc/nginx/sites-available
-	cp debian/nginx-glass-budget debian/glass-budget/etc/nginx/sites-available/glass-budget
+	test -f debian/nginx-glass-budget && cp debian/nginx-glass-budget debian/glass-budget/etc/nginx/sites-available/glass-budget
 	
 	# Install configuration directory
 	mkdir -p debian/glass-budget/etc/glass-budget
-	cp debian/glass-budget.env debian/glass-budget/etc/glass-budget/
+	test -f debian/glass-budget.env && cp debian/glass-budget.env debian/glass-budget/etc/glass-budget/
 	
 	# Install logrotate configuration
 	mkdir -p debian/glass-budget/etc/logrotate.d
-	cp config/logrotate debian/glass-budget/etc/logrotate.d/glass-budget
+	test -f config/logrotate && cp config/logrotate debian/glass-budget/etc/logrotate.d/glass-budget
 	
 	# Install scripts
 	mkdir -p debian/glass-budget/usr/bin
-	cp scripts/glass-budget-admin debian/glass-budget/usr/bin/
-	cp scripts/update.sh debian/glass-budget/usr/bin/glass-budget-update
-	chmod +x debian/glass-budget/usr/bin/glass-budget-admin
-	chmod +x debian/glass-budget/usr/bin/glass-budget-update
+	test -f scripts/glass-budget-admin && cp scripts/glass-budget-admin debian/glass-budget/usr/bin/
+	test -f scripts/update.sh && cp scripts/update.sh debian/glass-budget/usr/bin/glass-budget-update
+	test -f debian/glass-budget/usr/bin/glass-budget-admin && chmod +x debian/glass-budget/usr/bin/glass-budget-admin
+	test -f debian/glass-budget/usr/bin/glass-budget-update && chmod +x debian/glass-budget/usr/bin/glass-budget-update
 	
 	# Install additional scripts
 	mkdir -p debian/glass-budget/usr/share/glass-budget/scripts
-	cp scripts/install.sh debian/glass-budget/usr/share/glass-budget/scripts/
-	chmod +x debian/glass-budget/usr/share/glass-budget/scripts/install.sh
+	test -f scripts/install.sh && cp scripts/install.sh debian/glass-budget/usr/share/glass-budget/scripts/
+	test -f debian/glass-budget/usr/share/glass-budget/scripts/install.sh && chmod +x debian/glass-budget/usr/share/glass-budget/scripts/install.sh
 	
-	# Install log directory
+	# Create empty directories that will be populated at runtime
 	mkdir -p debian/glass-budget/var/log/glass-budget
-	
-	# Install data directory
 	mkdir -p debian/glass-budget/var/lib/glass-budget
 	mkdir -p debian/glass-budget/var/lib/glass-budget/backups
 
 override_dh_fixperms:
 	dh_fixperms
-	chmod 640 debian/glass-budget/etc/glass-budget/glass-budget.env
-	chmod 755 debian/glass-budget/usr/bin/glass-budget-admin
+	# Set specific permissions for config files if they exist
+	test -f debian/glass-budget/etc/glass-budget/glass-budget.env && chmod 640 debian/glass-budget/etc/glass-budget/glass-budget.env || true
+	# Set executable permissions for scripts if they exist
+	test -f debian/glass-budget/usr/bin/glass-budget-admin && chmod 755 debian/glass-budget/usr/bin/glass-budget-admin || true
+	test -f debian/glass-budget/usr/bin/glass-budget-update && chmod 755 debian/glass-budget/usr/bin/glass-budget-update || true
+	test -f debian/glass-budget/usr/share/glass-budget/scripts/install.sh && chmod 755 debian/glass-budget/usr/share/glass-budget/scripts/install.sh || true
