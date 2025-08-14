@@ -1,0 +1,49 @@
+[Unit]
+Description=Glass Budget Web Application
+After=network.target postgresql.service
+Wants=postgresql.service
+Documentation=https://github.com/your-org/glass-budget
+
+[Service]
+Type=exec
+User=glass-budget
+Group=glass-budget
+WorkingDirectory=/opt/glass-budget
+Environment=PYTHONPATH=/opt/glass-budget
+EnvironmentFile=/etc/glass-budget/glass-budget.env
+ExecStart=/opt/glass-budget/venv/bin/python app.py
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+NoNewPrivileges=true
+
+# Security settings
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/glass-budget /var/log/glass-budget /tmp
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictNamespaces=true
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=300
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=glass-budget
+
+[Install]
+WantedBy=multi-user.target

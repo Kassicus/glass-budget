@@ -1,0 +1,45 @@
+Source: glass-budget
+Section: web
+Priority: optional
+Maintainer: Glass Budget Team <support@glass-budget.local>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               python3-all,
+               python3-setuptools
+Standards-Version: 4.6.0
+Homepage: https://github.com/your-org/glass-budget
+Vcs-Git: https://github.com/your-org/glass-budget.git
+Vcs-Browser: https://github.com/your-org/glass-budget
+
+Package: glass-budget
+Architecture: all
+Depends: ${python3:Depends},
+         ${misc:Depends},
+         python3-flask (>= 2.3.0),
+         python3-flask-sqlalchemy (>= 3.0.0),
+         python3-flask-login (>= 0.6.0),
+         python3-flask-wtf (>= 1.1.0),
+         python3-wtforms (>= 3.0.0),
+         python3-werkzeug (>= 2.3.0),
+         python3-dotenv (>= 1.0.0),
+         python3-bcrypt (>= 4.0.0),
+         python3-apscheduler (>= 3.10.0),
+         postgresql-client | sqlite3,
+         nginx,
+         systemd
+Recommends: postgresql
+Suggests: certbot
+Description: Modern glass-style budget tracking web application
+ Glass Budget is a modern budgeting tool built with Flask backend
+ and glassmorphism UI design. Features include:
+ .
+  * User authentication and management
+  * Account management (checking, savings, credit, investment)
+  * Transaction tracking (income/expense)
+  * Recurring bill management
+  * Savings goals tracking
+  * Modern glassmorphism UI design
+  * Responsive design for mobile and desktop
+ .
+ This package includes the complete web application, systemd service
+ files, and nginx configuration for production deployment on Ubuntu Server.

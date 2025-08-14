@@ -1,0 +1,84 @@
+#!/bin/bash
+
+set -e
+
+case "$1" in
+    configure)
+        # Create glass-budget user if it doesn't exist
+        if ! getent passwd glass-budget > /dev/null 2>&1; then
+            adduser --system --group --home /var/lib/glass-budget \
+                    --disabled-password --disabled-login \
+                    --shell /bin/false glass-budget
+        fi
+        
+        # Set ownership and permissions
+        chown -R glass-budget:glass-budget /opt/glass-budget
+        chown -R glass-budget:glass-budget /var/lib/glass-budget
+        chown -R glass-budget:glass-budget /var/log/glass-budget
+        chown root:glass-budget /etc/glass-budget/glass-budget.env
+        
+        # Create Python virtual environment
+        if [ ! -d /opt/glass-budget/venv ]; then
+            python3 -m venv /opt/glass-budget/venv
+            chown -R glass-budget:glass-budget /opt/glass-budget/venv
+        fi
+        
+        # Install Python dependencies
+        sudo -u glass-budget /opt/glass-budget/venv/bin/pip install -r /opt/glass-budget/requirements.txt
+        
+        # Generate secret key if not exists
+        if ! grep -q "SECRET_KEY=" /etc/glass-budget/glass-budget.env || grep -q "SECRET_KEY=your-secret-key-here" /etc/glass-budget/glass-budget.env; then
+            SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+            sed -i "s/SECRET_KEY=.*/SECRET_KEY=${SECRET_KEY}/" /etc/glass-budget/glass-budget.env
+        fi
+        
+        # Initialize database
+        cd /opt/glass-budget
+        sudo -u glass-budget /opt/glass-budget/venv/bin/python migrate_db.py
+        
+        # Enable and start services
+        systemctl daemon-reload
+        systemctl enable glass-budget.service
+        
+        # Configure nginx if requested
+        if [ -f /etc/nginx/sites-available/glass-budget ]; then
+            if [ ! -L /etc/nginx/sites-enabled/glass-budget ]; then
+                echo "Nginx configuration available at /etc/nginx/sites-available/glass-budget"
+                echo "To enable, run: sudo ln -s /etc/nginx/sites-available/glass-budget /etc/nginx/sites-enabled/"
+                echo "Then reload nginx: sudo systemctl reload nginx"
+            fi
+        fi
+        
+        # Start the service
+        systemctl start glass-budget.service
+        
+        echo ""
+        echo "Glass Budget has been installed successfully!"
+        echo ""
+        echo "Configuration file: /etc/glass-budget/glass-budget.env"
+        echo "Application directory: /opt/glass-budget"
+        echo "Data directory: /var/lib/glass-budget"
+        echo "Log directory: /var/log/glass-budget"
+        echo ""
+        echo "Service status: systemctl status glass-budget"
+        echo "Admin commands: glass-budget-admin --help"
+        echo ""
+        echo "To complete setup:"
+        echo "1. Edit /etc/glass-budget/glass-budget.env with your settings"
+        echo "2. Configure nginx (optional): ln -s /etc/nginx/sites-available/glass-budget /etc/nginx/sites-enabled/"
+        echo "3. Restart service: systemctl restart glass-budget"
+        echo ""
+        ;;
+    
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

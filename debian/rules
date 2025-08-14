@@ -1,0 +1,53 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export PYBUILD_NAME = glass-budget
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+override_dh_auto_install:
+	dh_auto_install
+	# Install application files
+	mkdir -p debian/glass-budget/opt/glass-budget
+	cp -r app.py models.py migrate_db.py requirements.txt static templates debian/glass-budget/opt/glass-budget/
+	
+	# Install systemd service file
+	mkdir -p debian/glass-budget/lib/systemd/system
+	cp debian/glass-budget.service debian/glass-budget/lib/systemd/system/
+	
+	# Install nginx configuration
+	mkdir -p debian/glass-budget/etc/nginx/sites-available
+	cp debian/nginx-glass-budget debian/glass-budget/etc/nginx/sites-available/glass-budget
+	
+	# Install configuration directory
+	mkdir -p debian/glass-budget/etc/glass-budget
+	cp debian/glass-budget.env debian/glass-budget/etc/glass-budget/
+	
+	# Install logrotate configuration
+	mkdir -p debian/glass-budget/etc/logrotate.d
+	cp config/logrotate debian/glass-budget/etc/logrotate.d/glass-budget
+	
+	# Install scripts
+	mkdir -p debian/glass-budget/usr/bin
+	cp scripts/glass-budget-admin debian/glass-budget/usr/bin/
+	cp scripts/update.sh debian/glass-budget/usr/bin/glass-budget-update
+	chmod +x debian/glass-budget/usr/bin/glass-budget-admin
+	chmod +x debian/glass-budget/usr/bin/glass-budget-update
+	
+	# Install additional scripts
+	mkdir -p debian/glass-budget/usr/share/glass-budget/scripts
+	cp scripts/install.sh debian/glass-budget/usr/share/glass-budget/scripts/
+	chmod +x debian/glass-budget/usr/share/glass-budget/scripts/install.sh
+	
+	# Install log directory
+	mkdir -p debian/glass-budget/var/log/glass-budget
+	
+	# Install data directory
+	mkdir -p debian/glass-budget/var/lib/glass-budget
+	mkdir -p debian/glass-budget/var/lib/glass-budget/backups
+
+override_dh_fixperms:
+	dh_fixperms
+	chmod 640 debian/glass-budget/etc/glass-budget/glass-budget.env
+	chmod 755 debian/glass-budget/usr/bin/glass-budget-admin

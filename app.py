@@ -680,7 +680,121 @@ def get_user_profile():
         'created_at': current_user.created_at.isoformat()
     })
 
-if __name__ == '__main__':
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for monitoring and load balancers"""
+    try:
+        # Check database connection
+        db.session.execute('SELECT 1')
+        
+        # Basic application info
+        health_info = {
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'version': '1.0.0',  # You can make this dynamic
+            'database': 'connected',
+            'uptime': 'ok'
+        }
+        
+        return jsonify(health_info), 200
+    
+    except Exception as e:
+        # Database connection failed
+        error_info = {
+            'status': 'unhealthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'error': str(e),
+            'database': 'disconnected'
+        }
+        
+        return jsonify(error_info), 503
+
+@app.route('/metrics', methods=['GET'])
+def metrics():
+    """Basic metrics endpoint for monitoring"""
+    try:
+        # Get basic stats
+        total_users = User.query.count()
+        total_accounts = Account.query.count()
+        total_transactions = Transaction.query.count()
+        total_bills = Bill.query.count()
+        total_goals = SavingsGoal.query.count()
+        
+        metrics_data = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'users': {
+                'total': total_users,
+                'active_today': User.query.filter(
+                    User.created_at >= datetime.utcnow() - timedelta(days=1)
+                ).count()
+            },
+            'accounts': {
+                'total': total_accounts,
+                'by_type': {
+                    'checking': Account.query.filter_by(account_type='checking').count(),
+                    'savings': Account.query.filter_by(account_type='savings').count(),
+                    'credit': Account.query.filter_by(account_type='credit').count(),
+                    'investment': Account.query.filter_by(account_type='investment').count()
+                }
+            },
+            'transactions': {
+                'total': total_transactions,
+                'today': Transaction.query.filter(
+                    Transaction.date >= datetime.utcnow().date()
+                ).count()
+            },
+            'bills': {
+                'total': total_bills,
+                'active': Bill.query.filter_by(is_active=True).count()
+            },
+            'savings_goals': {
+                'total': total_goals,
+                'active': SavingsGoal.query.filter_by(is_active=True).count()
+            }
+        }
+        
+        return jsonify(metrics_data), 200
+    
+    except Exception as e:
+        return jsonify({
+            'error': 'Failed to collect metrics',
+            'message': str(e)
+        }), 500
+
+def create_production_app():
+    """Create app with production configuration"""
+    # Load environment variables
+    load_dotenv()
+    
+    # Configure for production
+    if os.environ.get('FLASK_ENV') == 'production':
+        app.config['DEBUG'] = False
+        app.config['TESTING'] = False
+        
+        # Security headers
+        @app.after_request
+        def security_headers(response):
+            response.headers['X-Content-Type-Options'] = 'nosniff'
+            response.headers['X-Frame-Options'] = 'DENY'
+            response.headers['X-XSS-Protection'] = '1; mode=block'
+            
+            if os.environ.get('FORCE_HTTPS', 'false').lower() == 'true':
+                response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+            
+            return response
+    
+    # Initialize database
     with app.app_context():
         db.create_all()
-    app.run(debug=True, port=5001)
+    
+    return app
+
+if __name__ == '__main__':
+    production_app = create_production_app()
+    
+    # Get configuration from environment
+    host = os.environ.get('HOST', '127.0.0.1')
+    port = int(os.environ.get('PORT', 5001))
+    debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    
+    production_app.run(host=host, port=port, debug=debug)

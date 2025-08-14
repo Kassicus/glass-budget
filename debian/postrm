@@ -1,0 +1,49 @@
+#!/bin/bash
+
+set -e
+
+case "$1" in
+    purge)
+        # Remove user and data (only on purge, not on upgrade)
+        if getent passwd glass-budget > /dev/null 2>&1; then
+            echo "Removing glass-budget user and data directories..."
+            echo "Data backup location: /tmp/glass-budget-backup-$(date +%Y%m%d-%H%M%S)"
+            
+            # Backup data before removal
+            BACKUP_DIR="/tmp/glass-budget-backup-$(date +%Y%m%d-%H%M%S)"
+            mkdir -p "$BACKUP_DIR"
+            
+            if [ -d /var/lib/glass-budget ]; then
+                cp -r /var/lib/glass-budget "$BACKUP_DIR/" || true
+            fi
+            
+            if [ -d /etc/glass-budget ]; then
+                cp -r /etc/glass-budget "$BACKUP_DIR/" || true
+            fi
+            
+            # Remove directories
+            rm -rf /var/lib/glass-budget || true
+            rm -rf /var/log/glass-budget || true
+            rm -rf /etc/glass-budget || true
+            rm -rf /opt/glass-budget || true
+            
+            # Remove user
+            deluser glass-budget || true
+            
+            echo "Glass Budget data backed up to: $BACKUP_DIR"
+        fi
+        ;;
+    
+    remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        # Keep data on remove/upgrade
+        ;;
+    
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

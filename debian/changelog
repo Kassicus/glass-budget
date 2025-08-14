@@ -1,0 +1,16 @@
+glass-budget (1.0.0-1) unstable; urgency=medium
+
+  * Initial release of Glass Budget
+  * Modern glassmorphism UI design
+  * Complete budget tracking functionality
+  * Account management with multiple account types
+  * Transaction tracking and categorization
+  * Recurring bill management
+  * Savings goals with progress tracking
+  * User authentication and security
+  * Production-ready packaging for Ubuntu Server
+  * Systemd service integration
+  * Nginx reverse proxy configuration
+  * Automated backup and update scripts
+
+ -- Glass Budget Team <support@glass-budget.local>  Wed, 14 Aug 2025 12:00:00 +0000

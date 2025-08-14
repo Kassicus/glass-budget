@@ -1,0 +1,29 @@
+#!/bin/bash
+
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        # Stop the service
+        systemctl stop glass-budget.service || true
+        systemctl disable glass-budget.service || true
+        
+        # Remove nginx site if enabled
+        if [ -L /etc/nginx/sites-enabled/glass-budget ]; then
+            rm -f /etc/nginx/sites-enabled/glass-budget
+            systemctl reload nginx || true
+        fi
+        ;;
+    
+    failed-upgrade)
+        ;;
+    
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
