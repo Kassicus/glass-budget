@@ -40,12 +40,14 @@ curl -sSL https://github.com/kassicus/glass-budget/releases/latest/download/inst
 
 1. Download the latest package:
 ```bash
-wget https://github.com/kassicus/glass-budget/releases/latest/download/glass-budget_latest_all.deb
+# Get the latest release download URL
+DOWNLOAD_URL=$(curl -s https://api.github.com/repos/kassicus/glass-budget/releases/latest | grep "browser_download_url.*\.deb" | head -n 1 | cut -d '"' -f 4)
+wget "$DOWNLOAD_URL"
 ```
 
 2. Install the package:
 ```bash
-sudo apt install ./glass-budget_latest_all.deb
+sudo apt install ./glass-budget_*.deb
 ```
 
 3. Follow the post-installation configuration prompts.
@@ -118,8 +120,10 @@ sudo apt install -y python3 python3-venv postgresql nginx
 
 3. **Download and Install Package:**
 ```bash
-wget https://github.com/kassicus/glass-budget/releases/latest/download/glass-budget_latest_all.deb
-sudo apt install ./glass-budget_latest_all.deb
+# Get the latest release download URL
+DOWNLOAD_URL=$(curl -s https://api.github.com/repos/kassicus/glass-budget/releases/latest | grep "browser_download_url.*\.deb" | head -n 1 | cut -d '"' -f 4)
+wget "$DOWNLOAD_URL"
+sudo apt install ./glass-budget_*.deb
 ```
 
 4. **Configure Database (Optional):**

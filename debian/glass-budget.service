@@ -2,7 +2,7 @@
 Description=Glass Budget Web Application
 After=network.target postgresql.service
 Wants=postgresql.service
-Documentation=https://github.com/your-org/glass-budget
+Documentation=https://github.com/kassicus/glass-budget
 
 [Service]
 Type=exec

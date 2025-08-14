@@ -135,7 +135,18 @@ jobs:
           lintian \
           dh-python \
           python3-all \
-          python3-setuptools
+          python3-setuptools \
+          debhelper \
+          dh-exec \
+          python3-flask \
+          python3-flask-sqlalchemy \
+          python3-flask-login \
+          python3-flask-wtf \
+          python3-wtforms \
+          python3-werkzeug \
+          python3-dotenv \
+          python3-bcrypt \
+          python3-apscheduler
 
     - name: Determine version
       id: version
@@ -148,10 +159,21 @@ jobs:
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "Building version: $VERSION"
 
+    - name: Validate requirements before build
+      run: |
+        echo "Validating Python requirements..."
+        python3 -m pip install --dry-run -r requirements.txt
+        echo "Requirements validation passed"
+
     - name: Build Debian package
       run: |
         export VERSION=${{ steps.version.outputs.VERSION }}
+        echo "Building version: $VERSION"
         ./scripts/build-package.sh
+        
+        # List created files for debugging
+        echo "Files created after build:"
+        ls -la *.deb *.dsc *.tar.gz *.changes 2>/dev/null || echo "No build artifacts found in root directory"
 
     - name: Upload package artifacts
       uses: actions/upload-artifact@v3
@@ -211,16 +233,23 @@ jobs:
         draft: false
         prerelease: false
 
-    - name: Upload DEB Package
+    - name: Find and Upload DEB Package
       if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./glass-budget_${{ steps.version.outputs.VERSION }}_all.deb
-        asset_name: glass-budget_${{ steps.version.outputs.VERSION }}_all.deb
-        asset_content_type: application/vnd.debian.binary-package
+      run: |
+        # Find the generated .deb file
+        DEB_FILE=$(find . -name "*.deb" -type f | head -1)
+        if [ -z "$DEB_FILE" ]; then
+          echo "Error: No .deb file found"
+          exit 1
+        fi
+        echo "Found DEB file: $DEB_FILE"
+        
+        # Upload the .deb file with the expected name
+        curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/vnd.debian.binary-package" \
+          --data-binary @"$DEB_FILE" \
+          "${{ steps.create_release.outputs.upload_url }}?name=glass-budget_${{ steps.version.outputs.VERSION }}_all.deb&label=Glass Budget Debian Package"
 
     - name: Upload Installation Script
       if: startsWith(github.ref, 'refs/tags/')
@@ -233,16 +262,23 @@ jobs:
         asset_name: install.sh
         asset_content_type: application/x-sh
 
-    - name: Upload Source Package
+    - name: Find and Upload Source Package
       if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./glass-budget_${{ steps.version.outputs.VERSION }}.tar.gz
-        asset_name: glass-budget_${{ steps.version.outputs.VERSION }}.tar.gz
-        asset_content_type: application/gzip
+      run: |
+        # Find the generated source package
+        TAR_FILE=$(find . -name "*.tar.gz" -type f | head -1)
+        if [ -z "$TAR_FILE" ]; then
+          echo "Warning: No .tar.gz file found, skipping source package upload"
+          exit 0
+        fi
+        echo "Found TAR file: $TAR_FILE"
+        
+        # Upload the source package
+        curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/gzip" \
+          --data-binary @"$TAR_FILE" \
+          "${{ steps.create_release.outputs.upload_url }}?name=glass-budget_${{ steps.version.outputs.VERSION }}.tar.gz&label=Glass Budget Source Package"
 
   deploy-staging:
     needs: build-package

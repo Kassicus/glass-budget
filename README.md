@@ -62,11 +62,15 @@ This will automatically:
 
 ### Manual Installation from Debian Package
 ```bash
-# Download the latest release
-wget https://github.com/kassicus/glass-budget/releases/latest/download/glass-budget_latest_all.deb
+# Download the latest release (replace X.X.X with the latest version number)
+wget https://github.com/kassicus/glass-budget/releases/latest/download/glass-budget_X.X.X_all.deb
+
+# Or get the download URL dynamically
+DOWNLOAD_URL=$(curl -s https://api.github.com/repos/kassicus/glass-budget/releases/latest | grep "browser_download_url.*\.deb" | head -n 1 | cut -d '"' -f 4)
+wget "$DOWNLOAD_URL"
 
 # Install the package
-sudo apt install ./glass-budget_latest_all.deb
+sudo apt install ./glass-budget_*.deb
 
 # The service will start automatically
 sudo systemctl status glass-budget

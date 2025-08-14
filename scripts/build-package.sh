@@ -96,19 +96,23 @@ for file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-# Install build dependencies
-log "Installing build dependencies..."
-sudo apt-get update
-sudo apt-get install -y \
-    build-essential \
-    devscripts \
-    dh-make \
-    fakeroot \
-    lintian \
-    dh-python \
-    python3-all \
-    python3-setuptools \
-    debhelper
+# Install build dependencies only if not already installed (CI optimization)
+if ! command -v dpkg-buildpackage >/dev/null 2>&1; then
+    log "Installing build dependencies..."
+    sudo apt-get update
+    sudo apt-get install -y \
+        build-essential \
+        devscripts \
+        dh-make \
+        fakeroot \
+        lintian \
+        dh-python \
+        python3-all \
+        python3-setuptools \
+        debhelper
+else
+    log "Build dependencies already available"
+fi
 
 # Build the package
 log "Building Debian package..."
@@ -127,10 +131,14 @@ fi
 
 # Move packages to source directory
 log "Moving packages to source directory..."
-mv ../*.deb "$SOURCE_DIR/" || true
-mv ../*.dsc "$SOURCE_DIR/" || true
-mv ../*.tar.gz "$SOURCE_DIR/" || true
-mv ../*.changes "$SOURCE_DIR/" || true
+mv ../*.deb "$SOURCE_DIR/" 2>/dev/null || warn "No .deb files found to move"
+mv ../*.dsc "$SOURCE_DIR/" 2>/dev/null || warn "No .dsc files found to move"
+mv ../*.tar.gz "$SOURCE_DIR/" 2>/dev/null || warn "No .tar.gz files found to move"
+mv ../*.changes "$SOURCE_DIR/" 2>/dev/null || warn "No .changes files found to move"
+
+# List what we actually have in source directory
+log "Build artifacts in source directory:"
+ls -la "$SOURCE_DIR"/*.deb "$SOURCE_DIR"/*.dsc "$SOURCE_DIR"/*.tar.gz "$SOURCE_DIR"/*.changes 2>/dev/null || warn "No build artifacts found"
 
 # Run lintian checks
 log "Running package quality checks..."

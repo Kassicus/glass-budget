@@ -7,9 +7,9 @@ Build-Depends: debhelper-compat (= 13),
                python3-all,
                python3-setuptools
 Standards-Version: 4.6.0
-Homepage: https://github.com/your-org/glass-budget
-Vcs-Git: https://github.com/your-org/glass-budget.git
-Vcs-Browser: https://github.com/your-org/glass-budget
+Homepage: https://github.com/kassicus/glass-budget
+Vcs-Git: https://github.com/kassicus/glass-budget.git
+Vcs-Browser: https://github.com/kassicus/glass-budget
 
 Package: glass-budget
 Architecture: all
