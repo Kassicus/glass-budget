@@ -33,14 +33,14 @@ Glass Budget includes a complete CI/CD pipeline and production-ready deployment 
 For a complete automated installation on Ubuntu Server 24.04:
 
 ```bash
-curl -sSL https://github.com/your-org/glass-budget/releases/latest/download/install.sh | sudo bash
+curl -sSL https://github.com/kassicus/glass-budget/releases/latest/download/install.sh | sudo bash
 ```
 
 ### Package-Based Install
 
 1. Download the latest package:
 ```bash
-wget https://github.com/your-org/glass-budget/releases/latest/download/glass-budget_latest_all.deb
+wget https://github.com/kassicus/glass-budget/releases/latest/download/glass-budget_latest_all.deb
 ```
 
 2. Install the package:
@@ -118,7 +118,7 @@ sudo apt install -y python3 python3-venv postgresql nginx
 
 3. **Download and Install Package:**
 ```bash
-wget https://github.com/your-org/glass-budget/releases/latest/download/glass-budget_latest_all.deb
+wget https://github.com/kassicus/glass-budget/releases/latest/download/glass-budget_latest_all.deb
 sudo apt install ./glass-budget_latest_all.deb
 ```
 
@@ -412,7 +412,7 @@ sudo certbot renew --dry-run
    ```
 
 4. **GitHub Issues:**
-   Report issues at: https://github.com/your-org/glass-budget/issues
+   Report issues at: https://github.com/kassicus/glass-budget/issues
 
 ## File Locations Reference
 

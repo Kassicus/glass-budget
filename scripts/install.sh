@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Glass Budget Installation Script for Ubuntu Server 24.04
 # This script installs Glass Budget from the Debian package
@@ -73,7 +73,7 @@ sudo apt install -y \
 
 # Function to download and install the latest package
 install_glass_budget() {
-    local REPO_URL="https://api.github.com/repos/your-org/glass-budget/releases/latest"
+    local REPO_URL="https://api.github.com/repos/kassicus/glass-budget/releases/latest"
     local DOWNLOAD_URL
     
     log "Fetching latest Glass Budget release..."
@@ -83,7 +83,7 @@ install_glass_budget() {
     
     if [ -z "$DOWNLOAD_URL" ]; then
         error "Could not find Glass Budget package download URL"
-        error "Please visit https://github.com/your-org/glass-budget/releases and download manually"
+        error "Please visit https://github.com/kassicus/glass-budget/releases and download manually"
         exit 1
     fi
     

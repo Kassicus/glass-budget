@@ -49,7 +49,7 @@ For production deployment on Ubuntu Server 24.04, use our automated installation
 
 ### One-Line Installation
 ```bash
-curl -sSL https://github.com/YOUR_USERNAME/glass-budget/releases/latest/download/install.sh | sudo bash
+curl -sSL https://github.com/kassicus/glass-budget/releases/latest/download/install.sh | sudo bash
 ```
 
 This will automatically:
@@ -63,7 +63,7 @@ This will automatically:
 ### Manual Installation from Debian Package
 ```bash
 # Download the latest release
-wget https://github.com/YOUR_USERNAME/glass-budget/releases/latest/download/glass-budget_latest_all.deb
+wget https://github.com/kassicus/glass-budget/releases/latest/download/glass-budget_latest_all.deb
 
 # Install the package
 sudo apt install ./glass-budget_latest_all.deb
@@ -123,7 +123,7 @@ For local development:
 ### Quick Setup
 1. **Clone and setup**:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/glass-budget.git
+   git clone https://github.com/kassicus/glass-budget.git
    cd glass-budget
    python3 -m venv budget_env
    source budget_env/bin/activate
@@ -368,8 +368,8 @@ curl http://localhost:5000/metrics
 ## 📖 Additional Documentation
 
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Comprehensive deployment guide
-- **[GitHub Releases](https://github.com/YOUR_USERNAME/glass-budget/releases)** - Download latest version
-- **[GitHub Issues](https://github.com/YOUR_USERNAME/glass-budget/issues)** - Report bugs or request features
+- **[GitHub Releases](https://github.com/kassicus/glass-budget/releases)** - Download latest version
+- **[GitHub Issues](https://github.com/kassicus/glass-budget/issues)** - Report bugs or request features
 
 ## 🤝 Contributing
 

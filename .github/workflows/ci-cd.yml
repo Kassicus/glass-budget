@@ -180,11 +180,11 @@ jobs:
           **Ubuntu Server 24.04:**
           ```bash
           # Download and install
-          wget https://github.com/your-org/glass-budget/releases/download/${{ github.ref }}/glass-budget_${{ steps.version.outputs.VERSION }}_all.deb
+          wget https://github.com/kassicus/glass-budget/releases/download/${{ github.ref }}/glass-budget_${{ steps.version.outputs.VERSION }}_all.deb
           sudo apt install ./glass-budget_${{ steps.version.outputs.VERSION }}_all.deb
           
           # Or use the installation script
-          curl -sSL https://github.com/your-org/glass-budget/releases/download/${{ github.ref }}/install.sh | sudo bash
+          curl -sSL https://github.com/kassicus/glass-budget/releases/download/${{ github.ref }}/install.sh | sudo bash
           ```
           
           ### Update
