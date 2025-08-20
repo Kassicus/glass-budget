@@ -449,6 +449,12 @@
                     <option value="savings">Savings</option>
                     <option value="credit">Credit Card</option>
                     <option value="investment">Investment</option>
+                    <optgroup label="Loan Accounts">
+                        <option value="auto_loan">Auto Loan</option>
+                        <option value="mortgage">Mortgage</option>
+                        <option value="personal_loan">Personal Loan</option>
+                        <option value="student_loan">Student Loan</option>
+                    </optgroup>
                 </select>
             </div>
             <div class="form-group">
@@ -463,6 +469,60 @@
                 <label for="currentBalance">Current Balance (Amount Owed)</label>
                 <input type="number" id="currentBalance" name="current_balance" step="0.01" value="0">
             </div>
+            
+            <!-- Loan-specific fields -->
+            <div id="loanFields" style="display: none;">
+                <h4 style="margin: 20px 0 15px 0; color: var(--text-primary); font-size: 1.1em;">Loan Details</h4>
+                
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1; margin-right: 10px;">
+                        <label for="originalAmount">Original Loan Amount</label>
+                        <input type="number" id="originalAmount" name="original_amount" step="0.01" placeholder="Total loan amount">
+                    </div>
+                    <div class="form-group" style="flex: 1; margin-left: 10px;">
+                        <label for="currentPrincipal">Current Principal Balance</label>
+                        <input type="number" id="currentPrincipal" name="current_principal" step="0.01" placeholder="Amount still owed">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1; margin-right: 10px;">
+                        <label for="interestRate">Interest Rate (%)</label>
+                        <input type="number" id="interestRate" name="interest_rate" step="0.01" placeholder="5.5">
+                    </div>
+                    <div class="form-group" style="flex: 1; margin-left: 10px;">
+                        <label for="loanTermMonths">Loan Term (months)</label>
+                        <input type="number" id="loanTermMonths" name="loan_term_months" placeholder="60">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1; margin-right: 10px;">
+                        <label for="monthlyPayment">Monthly Payment</label>
+                        <input type="number" id="monthlyPayment" name="monthly_payment" step="0.01" placeholder="Monthly payment amount">
+                    </div>
+                    <div class="form-group" style="flex: 1; margin-left: 10px;">
+                        <label for="nextPaymentDate">Next Payment Date</label>
+                        <input type="date" id="nextPaymentDate" name="next_payment_date">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="lenderName">Lender/Bank Name (Optional)</label>
+                    <input type="text" id="lenderName" name="lender_name" placeholder="Chase Bank">
+                </div>
+                
+                <div class="form-group" id="vehicleInfoGroup" style="display: none;">
+                    <label for="vehicleInfo">Vehicle Information</label>
+                    <input type="text" id="vehicleInfo" name="vehicle_info" placeholder="2020 Honda Civic">
+                </div>
+                
+                <div class="form-group" id="propertyAddressGroup" style="display: none;">
+                    <label for="propertyAddress">Property Address</label>
+                    <input type="text" id="propertyAddress" name="property_address" placeholder="123 Main St, City, State">
+                </div>
+            </div>
+            
             <div class="modal-actions">
                 <button type="button" class="btn btn-outline modal-cancel">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Account</button>
