@@ -37,7 +37,8 @@ class Account(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     transactions = db.relationship('Transaction', backref='account', lazy=True)
-    bills = db.relationship('Bill', backref='account', lazy=True)
+    bills = db.relationship('Bill', foreign_keys='Bill.account_id', backref='account', lazy=True)
+    loan_payments = db.relationship('Bill', foreign_keys='Bill.loan_account_id', backref='loan_account_ref', lazy=True)
     loan_details = db.relationship('LoanDetails', backref='account', uselist=False, cascade='all, delete-orphan')
     
     @property
@@ -86,6 +87,19 @@ class Bill(db.Model):
     paid_date = db.Column(db.DateTime, nullable=True)
     last_paid_month = db.Column(db.Integer, nullable=True)  # Track which month was last paid
     last_paid_year = db.Column(db.Integer, nullable=True)
+    loan_account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True)  # Link to loan account if this is a loan payment
+    
+    @property
+    def is_loan_payment(self):
+        """Check if this bill is automatically generated for a loan payment"""
+        return self.loan_account_id is not None
+    
+    @property
+    def loan_account(self):
+        """Get the associated loan account if this is a loan payment"""
+        if self.loan_account_id:
+            return Account.query.get(self.loan_account_id)
+        return None
 
 class SavingsGoal(db.Model):
     id = db.Column(db.Integer, primary_key=True)

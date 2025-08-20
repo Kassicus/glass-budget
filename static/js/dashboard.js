@@ -138,6 +138,54 @@ function renderAccounts() {
                     </div>
                 </div>
             `;
+        } else if (account.is_loan_account && account.loan_details) {
+            const loanDetails = account.loan_details;
+            const progressPercentage = loanDetails.loan_progress_percentage || 0;
+            const remainingPayments = loanDetails.remaining_payments || 0;
+            
+            return `
+                <div class="account-item loan-account">
+                    <div class="account-header">
+                        <div class="account-info">
+                            <div class="account-name">${account.name}</div>
+                            <div class="account-type">${account.account_type.replace('_', ' ')}</div>
+                        </div>
+                        <div class="account-actions">
+                            <button class="btn btn-small btn-secondary btn-icon" onclick="editAccount(${account.id})">Edit</button>
+                            <button class="btn btn-small btn-outline btn-icon" onclick="deleteAccount(${account.id})">Delete</button>
+                        </div>
+                    </div>
+                    <div class="loan-info">
+                        <div class="loan-balance">
+                            <div class="loan-label">Remaining Balance</div>
+                            <div class="loan-amount owed">${formatCurrency(loanDetails.current_principal)}</div>
+                        </div>
+                        <div class="loan-payment">
+                            <div class="loan-label">Monthly Payment</div>
+                            <div class="loan-amount payment">${formatCurrency(loanDetails.monthly_payment)}</div>
+                        </div>
+                        <div class="loan-progress">
+                            <div class="loan-progress-header">
+                                <div class="loan-label">Loan Progress</div>
+                                <div class="loan-progress-stats">${progressPercentage.toFixed(1)}% paid off</div>
+                            </div>
+                            <div class="loan-progress-bar">
+                                <div class="loan-progress-fill" style="width: ${Math.min(progressPercentage, 100)}%"></div>
+                            </div>
+                            <div class="loan-progress-details">
+                                <div class="loan-detail-item">
+                                    <span class="loan-detail-label">Paid:</span>
+                                    <span class="loan-detail-value">${formatCurrency(loanDetails.original_amount - loanDetails.current_principal)}</span>
+                                </div>
+                                <div class="loan-detail-item">
+                                    <span class="loan-detail-label">Remaining:</span>
+                                    <span class="loan-detail-value">${remainingPayments} payments</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         } else {
             return `
                 <div class="account-item">
@@ -412,14 +460,24 @@ function setupEventListeners() {
         accountForm.onsubmit = handleAccountSubmit;
     }
     
-    // Account type change handler
-    document.getElementById('accountType')?.addEventListener('change', (e) => {
-        if (e.target.value === 'credit') {
+    // Initialize custom dropdown
+    initializeCustomDropdown();
+    
+    // Account type change handler (will be triggered by custom dropdown)
+    function handleAccountTypeChange(accountType) {
+        const loanTypes = ['auto_loan', 'mortgage', 'personal_loan', 'student_loan'];
+        
+        if (accountType === 'credit') {
             showCreditFields();
+            hideLoanFields();
+        } else if (loanTypes.includes(accountType)) {
+            hideCreditFields();
+            showLoanFields(accountType);
         } else {
             hideCreditFields();
+            hideLoanFields();
         }
-    });
+    }
     
     // Transaction form
     document.getElementById('transactionForm')?.addEventListener('submit', handleTransactionSubmit);
@@ -450,16 +508,43 @@ async function handleAccountSubmit(e) {
     e.preventDefault();
     
     const formData = new FormData(e.target);
+    const accountType = formData.get('account_type');
     const accountData = {
         name: formData.get('name'),
-        account_type: formData.get('account_type'),
+        account_type: accountType,
         balance: formData.get('balance') || 0
     };
     
     // Add credit account specific fields
-    if (formData.get('account_type') === 'credit') {
+    if (accountType === 'credit') {
         accountData.credit_limit = formData.get('credit_limit') || null;
         accountData.current_balance = formData.get('current_balance') || 0;
+    }
+    
+    // Add loan account specific fields
+    if (['auto_loan', 'mortgage', 'personal_loan', 'student_loan'].includes(accountType)) {
+        const loanDetails = {
+            original_amount: formData.get('original_amount'),
+            current_principal: formData.get('current_principal'),
+            interest_rate: formData.get('interest_rate'),
+            loan_term_months: formData.get('loan_term_months'),
+            monthly_payment: formData.get('monthly_payment'),
+            next_payment_date: formData.get('next_payment_date'),
+            lender_name: formData.get('lender_name') || '',
+            loan_number: formData.get('loan_number') || '',
+            vehicle_info: formData.get('vehicle_info') || '',
+            property_address: formData.get('property_address') || ''
+        };
+        
+        // Validate required loan fields
+        if (!loanDetails.original_amount || !loanDetails.current_principal || 
+            !loanDetails.interest_rate || !loanDetails.loan_term_months || 
+            !loanDetails.monthly_payment || !loanDetails.next_payment_date) {
+            showMessage('Please fill in all required loan details', 'error');
+            return;
+        }
+        
+        accountData.loan_details = loanDetails;
     }
     
     try {
@@ -468,7 +553,11 @@ async function handleAccountSubmit(e) {
             body: JSON.stringify(accountData)
         });
         
-        showMessage('Account created successfully!');
+        if (['auto_loan', 'mortgage', 'personal_loan', 'student_loan'].includes(accountType)) {
+            showMessage('Loan account created successfully with automatic bill payment!');
+        } else {
+            showMessage('Account created successfully!');
+        }
         closeModal('accountModal');
         await loadAccounts();
     } catch (error) {
@@ -632,16 +721,37 @@ async function editAccount(accountId) {
     
     // Populate form
     document.getElementById('accountName').value = account.name;
-    document.getElementById('accountType').value = account.account_type;
     document.getElementById('accountBalance').value = account.balance;
     
-    // Handle credit account fields
+    // Set custom dropdown value
+    setCustomDropdownValue(account.account_type);
+    
+    // Handle account type specific fields
+    const loanTypes = ['auto_loan', 'mortgage', 'personal_loan', 'student_loan'];
+    
     if (account.account_type === 'credit') {
         document.getElementById('creditLimit').value = account.credit_limit || '';
         document.getElementById('currentBalance').value = account.current_balance || 0;
         showCreditFields();
+        hideLoanFields();
+    } else if (loanTypes.includes(account.account_type) && account.loan_details) {
+        // Populate loan fields
+        const loan = account.loan_details;
+        document.getElementById('originalAmount').value = loan.original_amount || '';
+        document.getElementById('currentPrincipal').value = loan.current_principal || '';
+        document.getElementById('interestRate').value = loan.interest_rate || '';
+        document.getElementById('loanTermMonths').value = loan.loan_term_months || '';
+        document.getElementById('monthlyPayment').value = loan.monthly_payment || '';
+        document.getElementById('nextPaymentDate').value = loan.next_payment_date ? loan.next_payment_date.split('T')[0] : '';
+        document.getElementById('lenderName').value = loan.lender_name || '';
+        document.getElementById('vehicleInfo').value = loan.vehicle_info || '';
+        document.getElementById('propertyAddress').value = loan.property_address || '';
+        
+        hideCreditFields();
+        showLoanFields(account.account_type);
     } else {
         hideCreditFields();
+        hideLoanFields();
     }
     
     document.getElementById('accountModalTitle').textContent = 'Edit Account';
@@ -682,6 +792,7 @@ async function editAccount(accountId) {
             // Clear form
             form.reset();
             hideCreditFields();
+            hideLoanFields();
         } catch (error) {
             showMessage('Failed to update account', 'error');
         }
@@ -692,19 +803,29 @@ async function editAccount(accountId) {
 
 // Delete account
 async function deleteAccount(accountId) {
-    if (!confirm('Are you sure you want to delete this account? This will also delete all associated transactions.')) {
+    if (!confirm('Are you sure you want to delete this account? This will also delete all associated transactions and bills.')) {
         return;
     }
     
+    console.log(`Attempting to delete account ID: ${accountId}`);
+    
     try {
-        await apiRequest(`/api/accounts/${accountId}`, {
+        const response = await apiRequest(`/api/accounts/${accountId}`, {
             method: 'DELETE'
         });
         
+        console.log('Delete response:', response);
         showMessage('Account deleted successfully!');
         await Promise.all([loadAccounts(), loadTransactions()]);
     } catch (error) {
-        showMessage('Failed to delete account', 'error');
+        console.error('Account deletion error:', error);
+        console.error('Error details:', {
+            message: error.message,
+            status: error.status,
+            stack: error.stack
+        });
+        
+        showMessage(`Failed to delete account: ${error.message}`, 'error');
     }
 }
 
@@ -844,6 +965,148 @@ async function deleteTransaction(transactionId) {
     } catch (error) {
         showMessage('Failed to delete transaction', 'error');
     }
+}
+
+// Initialize custom dropdown functionality
+function initializeCustomDropdown() {
+    const selectDisplay = document.getElementById('accountTypeDisplay');
+    const selectOptions = document.getElementById('accountTypeOptions');
+    const selectText = selectDisplay?.querySelector('.select-text');
+    const hiddenInput = document.getElementById('accountType');
+    
+    if (!selectDisplay || !selectOptions || !selectText || !hiddenInput) return;
+    
+    // Toggle dropdown
+    selectDisplay.addEventListener('click', () => {
+        const isOpen = selectOptions.classList.contains('show');
+        if (isOpen) {
+            closeDropdown();
+        } else {
+            openDropdown();
+        }
+    });
+    
+    // Handle option selection
+    selectOptions.addEventListener('click', (e) => {
+        if (e.target.classList.contains('select-option')) {
+            const value = e.target.dataset.value;
+            const text = e.target.textContent;
+            
+            // Update display
+            selectText.textContent = text;
+            selectText.classList.remove('placeholder');
+            
+            // Update hidden input
+            hiddenInput.value = value;
+            
+            // Remove previous selection
+            selectOptions.querySelectorAll('.select-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            // Mark as selected
+            e.target.classList.add('selected');
+            
+            // Close dropdown
+            closeDropdown();
+            
+            // Trigger account type change handler
+            handleAccountTypeChange(value);
+        }
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#accountTypeSelect')) {
+            closeDropdown();
+        }
+    });
+    
+    // Close with escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeDropdown();
+        }
+    });
+    
+    function openDropdown() {
+        selectDisplay.classList.add('active');
+        
+        // Check if dropdown would be clipped by modal bounds
+        const modalContent = selectDisplay.closest('.modal-content');
+        if (modalContent) {
+            const selectRect = selectDisplay.getBoundingClientRect();
+            const modalRect = modalContent.getBoundingClientRect();
+            const dropdownHeight = 200; // max-height of dropdown
+            
+            // Check if dropdown would extend beyond modal bottom
+            const spaceBelow = modalRect.bottom - selectRect.bottom;
+            const spaceAbove = selectRect.top - modalRect.top;
+            
+            if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                // Position above if there's more space above
+                selectOptions.classList.add('position-above');
+            } else {
+                // Position below (default)
+                selectOptions.classList.remove('position-above');
+            }
+        }
+        
+        selectOptions.classList.add('show');
+    }
+    
+    function closeDropdown() {
+        selectDisplay.classList.remove('active');
+        selectOptions.classList.remove('show');
+        selectOptions.classList.remove('position-above');
+    }
+}
+
+// Set custom dropdown value (for editing)
+function setCustomDropdownValue(value) {
+    const selectText = document.querySelector('#accountTypeDisplay .select-text');
+    const hiddenInput = document.getElementById('accountType');
+    const selectOptions = document.getElementById('accountTypeOptions');
+    
+    if (!selectText || !hiddenInput || !selectOptions) return;
+    
+    // Find the option with the matching value
+    const option = selectOptions.querySelector(`[data-value="${value}"]`);
+    if (option) {
+        // Update display text
+        selectText.textContent = option.textContent;
+        selectText.classList.remove('placeholder');
+        
+        // Update hidden input
+        hiddenInput.value = value;
+        
+        // Update selection state
+        selectOptions.querySelectorAll('.select-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        option.classList.add('selected');
+    }
+}
+
+// Reset custom dropdown to default state
+function resetCustomDropdown() {
+    const selectText = document.querySelector('#accountTypeDisplay .select-text');
+    const hiddenInput = document.getElementById('accountType');
+    const selectOptions = document.getElementById('accountTypeOptions');
+    
+    if (!selectText || !hiddenInput || !selectOptions) return;
+    
+    // Reset display
+    selectText.textContent = 'Select account type';
+    selectText.classList.add('placeholder');
+    
+    // Reset hidden input
+    hiddenInput.value = '';
+    
+    // Clear selection state
+    selectOptions.querySelectorAll('.select-option').forEach(opt => {
+        opt.classList.remove('selected');
+    });
 }
 
 // Load categories
@@ -1192,6 +1455,59 @@ function hideCreditFields() {
     // Clear the values when hiding
     document.getElementById('creditLimit').value = '';
     document.getElementById('currentBalance').value = '0';
+}
+
+// Show loan account fields
+function showLoanFields(loanType) {
+    document.getElementById('loanFields').style.display = 'block';
+    
+    // Hide initial balance field for loan accounts since it conflicts with loan amount
+    document.getElementById('accountBalance').closest('.form-group').style.display = 'none';
+    
+    // Show/hide specific fields based on loan type
+    const vehicleGroup = document.getElementById('vehicleInfoGroup');
+    const propertyGroup = document.getElementById('propertyAddressGroup');
+    
+    if (loanType === 'auto_loan') {
+        vehicleGroup.style.display = 'block';
+        propertyGroup.style.display = 'none';
+    } else if (loanType === 'mortgage') {
+        vehicleGroup.style.display = 'none';
+        propertyGroup.style.display = 'block';
+    } else {
+        vehicleGroup.style.display = 'none';
+        propertyGroup.style.display = 'none';
+    }
+    
+    // Set default next payment date to next month
+    const nextPaymentInput = document.getElementById('nextPaymentDate');
+    if (!nextPaymentInput.value) {
+        const nextMonth = new Date();
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        nextPaymentInput.value = nextMonth.toISOString().split('T')[0];
+    }
+}
+
+// Hide loan account fields
+function hideLoanFields() {
+    document.getElementById('loanFields').style.display = 'none';
+    document.getElementById('vehicleInfoGroup').style.display = 'none';
+    document.getElementById('propertyAddressGroup').style.display = 'none';
+    
+    // Show initial balance field again for non-loan accounts
+    document.getElementById('accountBalance').closest('.form-group').style.display = 'block';
+    
+    // Clear loan field values
+    const loanFields = [
+        'originalAmount', 'currentPrincipal', 'interestRate', 
+        'loanTermMonths', 'monthlyPayment', 'nextPaymentDate',
+        'lenderName', 'vehicleInfo', 'propertyAddress'
+    ];
+    
+    loanFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) field.value = '';
+    });
 }
 
 // Edit savings goal

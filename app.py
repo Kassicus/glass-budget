@@ -87,15 +87,40 @@ def logout():
 def accounts():
     if request.method == 'GET':
         user_accounts = Account.query.filter_by(user_id=current_user.id).all()
-        return jsonify([{
-            'id': acc.id,
-            'name': acc.name,
-            'account_type': acc.account_type,
-            'balance': acc.balance,
-            'credit_limit': acc.credit_limit,
-            'current_balance': acc.current_balance,
-            'created_at': acc.created_at.isoformat()
-        } for acc in user_accounts])
+        accounts_data = []
+        for acc in user_accounts:
+            account_data = {
+                'id': acc.id,
+                'name': acc.name,
+                'account_type': acc.account_type,
+                'balance': acc.balance,
+                'credit_limit': acc.credit_limit,
+                'current_balance': acc.current_balance,
+                'created_at': acc.created_at.isoformat(),
+                'is_loan_account': acc.is_loan_account,
+                'display_balance': acc.display_balance
+            }
+            
+            # Add loan details if this is a loan account
+            if acc.is_loan_account and acc.loan_details:
+                loan = acc.loan_details
+                account_data['loan_details'] = {
+                    'original_amount': loan.original_amount,
+                    'current_principal': loan.current_principal,
+                    'interest_rate': loan.interest_rate,
+                    'loan_term_months': loan.loan_term_months,
+                    'monthly_payment': loan.monthly_payment,
+                    'next_payment_date': loan.next_payment_date.isoformat(),
+                    'lender_name': loan.lender_name,
+                    'loan_progress_percentage': loan.loan_progress_percentage,
+                    'remaining_payments': loan.remaining_payments,
+                    'property_address': loan.property_address,
+                    'vehicle_info': loan.vehicle_info
+                }
+            
+            accounts_data.append(account_data)
+        
+        return jsonify(accounts_data)
     
     if request.method == 'POST':
         data = request.get_json()
@@ -108,6 +133,56 @@ def accounts():
             user_id=current_user.id
         )
         db.session.add(account)
+        db.session.flush()  # Get account ID before committing
+        
+        # Handle loan account creation
+        if account.account_type in ['auto_loan', 'mortgage', 'personal_loan', 'student_loan']:
+            loan_data = data.get('loan_details', {})
+            if loan_data:
+                # Import here to avoid circular imports
+                from models import LoanDetails, Bill
+                from datetime import datetime
+                
+                # Create loan details
+                loan_details = LoanDetails(
+                    account_id=account.id,
+                    original_amount=float(loan_data['original_amount']),
+                    current_principal=float(loan_data['current_principal']),
+                    interest_rate=float(loan_data['interest_rate']),
+                    loan_term_months=int(loan_data['loan_term_months']),
+                    monthly_payment=float(loan_data['monthly_payment']),
+                    loan_start_date=datetime.fromisoformat(loan_data.get('loan_start_date', datetime.now().isoformat())),
+                    next_payment_date=datetime.fromisoformat(loan_data['next_payment_date']),
+                    lender_name=loan_data.get('lender_name'),
+                    loan_number=loan_data.get('loan_number'),
+                    property_address=loan_data.get('property_address'),
+                    vehicle_info=loan_data.get('vehicle_info')
+                )
+                db.session.add(loan_details)
+                
+                # Automatically create a recurring bill for the loan payment
+                next_payment = datetime.fromisoformat(loan_data['next_payment_date'])
+                bill_name = f"{account.name} Payment"
+                
+                # Determine category based on loan type
+                category_map = {
+                    'auto_loan': 'Transportation',
+                    'mortgage': 'Housing',
+                    'personal_loan': 'Debt',
+                    'student_loan': 'Education'
+                }
+                
+                loan_bill = Bill(
+                    name=bill_name,
+                    amount=float(loan_data['monthly_payment']),
+                    category=category_map.get(account.account_type, 'Debt'),
+                    day_of_month=next_payment.day,
+                    user_id=current_user.id,
+                    account_id=account.id,  # Which account to deduct from for payment
+                    loan_account_id=account.id  # Link to the loan account
+                )
+                db.session.add(loan_bill)
+        
         db.session.commit()
         return jsonify({'success': True, 'id': account.id})
 
@@ -131,9 +206,35 @@ def account_detail(account_id):
         return jsonify({'success': True})
     
     if request.method == 'DELETE':
-        db.session.delete(account)
-        db.session.commit()
-        return jsonify({'success': True})
+        # Handle account deletion with proper cleanup of related records
+        try:
+            # Delete all transactions for this account
+            Transaction.query.filter_by(account_id=account_id).delete()
+            
+            # Handle bills - different logic for regular vs loan accounts
+            if account.is_loan_account:
+                # For loan accounts, delete bills that are loan payments for this account
+                # But don't delete bills that are paid FROM this account (user might want to keep those)
+                Bill.query.filter_by(loan_account_id=account_id).delete()
+            else:
+                # For regular accounts, delete bills paid from this account
+                Bill.query.filter_by(account_id=account_id).delete()
+                
+                # Also set loan_account_id to NULL for any bills that were loan payments for this account
+                # (in case a non-loan account somehow has loan payments - defensive programming)
+                bills_to_update = Bill.query.filter_by(loan_account_id=account_id).all()
+                for bill in bills_to_update:
+                    bill.loan_account_id = None
+            
+            # Delete the account (loan details will be deleted automatically due to cascade)
+            db.session.delete(account)
+            db.session.commit()
+            
+            return jsonify({'success': True})
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': 'Failed to delete account due to database constraints'}), 500
 
 # API Endpoints for Transactions
 @app.route('/api/transactions', methods=['GET', 'POST'])
@@ -378,6 +479,17 @@ def bill_detail(bill_id):
         return jsonify({'success': True})
     
     if request.method == 'DELETE':
+        # Check if this bill is linked to a loan account
+        if bill.is_loan_payment:
+            loan_account = bill.loan_account
+            loan_account_name = loan_account.name if loan_account else "Unknown Loan"
+            return jsonify({
+                'success': False, 
+                'message': f'This bill is automatically generated for loan payments ({loan_account_name}). To remove this bill, you must delete the associated loan account.',
+                'is_loan_payment': True,
+                'loan_account_name': loan_account_name
+            }), 400
+        
         db.session.delete(bill)
         db.session.commit()
         return jsonify({'success': True})

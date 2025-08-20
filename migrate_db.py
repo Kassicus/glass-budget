@@ -47,30 +47,13 @@ def migrate_sqlite(db_path):
     cursor = conn.cursor()
     
     try:
-        # Check if we need to create the SavingsGoal table
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='savings_goal'")
-        if not cursor.fetchone():
-            logger.info("Creating savings_goal table...")
-            cursor.execute("""
-                CREATE TABLE savings_goal (
-                    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                    name VARCHAR(100) NOT NULL,
-                    current_amount REAL DEFAULT 0.0,
-                    target_amount REAL NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    FOREIGN KEY(user_id) REFERENCES user (id)
-                )
-            """)
-            logger.info("savings_goal table created successfully")
-        
         # Check existing tables and create if missing
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='account'")
         if not cursor.fetchone():
             logger.info("Creating tables from scratch...")
             create_all_tables_sqlite(cursor)
         else:
+            logger.info("Updating existing tables...")
             # Update existing tables
             update_existing_tables_sqlite(cursor)
         
@@ -185,8 +168,10 @@ def create_all_tables_sqlite(cursor):
             paid_date DATETIME,
             last_paid_month INTEGER,
             last_paid_year INTEGER,
+            loan_account_id INTEGER,
             FOREIGN KEY(user_id) REFERENCES user (id),
-            FOREIGN KEY(account_id) REFERENCES account (id)
+            FOREIGN KEY(account_id) REFERENCES account (id),
+            FOREIGN KEY(loan_account_id) REFERENCES account (id)
         )
         """,
         """
@@ -199,6 +184,26 @@ def create_all_tables_sqlite(cursor):
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT TRUE,
             FOREIGN KEY(user_id) REFERENCES user (id)
+        )
+        """,
+        """
+        CREATE TABLE loan_details (
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            account_id INTEGER NOT NULL,
+            original_amount REAL NOT NULL,
+            current_principal REAL NOT NULL,
+            interest_rate REAL NOT NULL,
+            loan_term_months INTEGER NOT NULL,
+            monthly_payment REAL NOT NULL,
+            loan_start_date DATETIME NOT NULL,
+            next_payment_date DATETIME NOT NULL,
+            lender_name VARCHAR(100),
+            loan_number VARCHAR(50),
+            property_address VARCHAR(200),
+            vehicle_info VARCHAR(200),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(account_id) REFERENCES account (id)
         )
         """
     ]
@@ -221,6 +226,15 @@ def update_existing_tables_sqlite(cursor):
         logger.info("Adding current_balance column to account table...")
         cursor.execute("ALTER TABLE account ADD COLUMN current_balance REAL DEFAULT 0.0")
     
+    # Check bill table columns for loan support
+    cursor.execute("PRAGMA table_info(bill)")
+    bill_columns = [column[1] for column in cursor.fetchall()]
+    
+    if 'loan_account_id' not in bill_columns:
+        logger.info("Adding loan_account_id column to bill table...")
+        cursor.execute("ALTER TABLE bill ADD COLUMN loan_account_id INTEGER REFERENCES account(id)")
+        logger.info("loan_account_id column added successfully")
+    
     # Check if savings_goal table exists
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='savings_goal'")
     if not cursor.fetchone():
@@ -235,6 +249,31 @@ def update_existing_tables_sqlite(cursor):
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 is_active BOOLEAN DEFAULT TRUE,
                 FOREIGN KEY(user_id) REFERENCES user (id)
+            )
+        """)
+    
+    # Check if loan_details table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='loan_details'")
+    if not cursor.fetchone():
+        logger.info("Creating loan_details table...")
+        cursor.execute("""
+            CREATE TABLE loan_details (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER NOT NULL,
+                original_amount REAL NOT NULL,
+                current_principal REAL NOT NULL,
+                interest_rate REAL NOT NULL,
+                loan_term_months INTEGER NOT NULL,
+                monthly_payment REAL NOT NULL,
+                loan_start_date DATETIME NOT NULL,
+                next_payment_date DATETIME NOT NULL,
+                lender_name VARCHAR(100),
+                loan_number VARCHAR(50),
+                property_address VARCHAR(200),
+                vehicle_info VARCHAR(200),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(account_id) REFERENCES account (id)
             )
         """)
 
@@ -288,7 +327,8 @@ def create_all_tables_postgresql(cursor):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             paid_date TIMESTAMP,
             last_paid_month INTEGER,
-            last_paid_year INTEGER
+            last_paid_year INTEGER,
+            loan_account_id INTEGER REFERENCES account(id)
         )
         """,
         """
@@ -300,6 +340,25 @@ def create_all_tables_postgresql(cursor):
             user_id INTEGER NOT NULL REFERENCES "user"(id),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT TRUE
+        )
+        """,
+        """
+        CREATE TABLE loan_details (
+            id SERIAL PRIMARY KEY,
+            account_id INTEGER NOT NULL REFERENCES account(id),
+            original_amount DECIMAL(10,2) NOT NULL,
+            current_principal DECIMAL(10,2) NOT NULL,
+            interest_rate DECIMAL(5,2) NOT NULL,
+            loan_term_months INTEGER NOT NULL,
+            monthly_payment DECIMAL(10,2) NOT NULL,
+            loan_start_date TIMESTAMP NOT NULL,
+            next_payment_date TIMESTAMP NOT NULL,
+            lender_name VARCHAR(100),
+            loan_number VARCHAR(50),
+            property_address VARCHAR(200),
+            vehicle_info VARCHAR(200),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """
     ]
@@ -328,6 +387,15 @@ def update_existing_tables_postgresql(cursor):
             logger.info("Adding current_balance column to account table...")
             cursor.execute("ALTER TABLE account ADD COLUMN current_balance DECIMAL(10,2) DEFAULT 0.0")
         
+        # Check bill table for loan support
+        cursor.execute("""
+            SELECT column_name FROM information_schema.columns 
+            WHERE table_name = 'bill' AND column_name = 'loan_account_id'
+        """)
+        if not cursor.fetchone():
+            logger.info("Adding loan_account_id column to bill table...")
+            cursor.execute("ALTER TABLE bill ADD COLUMN loan_account_id INTEGER REFERENCES account(id)")
+        
         # Check if savings_goal table exists
         cursor.execute("""
             SELECT table_name FROM information_schema.tables 
@@ -344,6 +412,33 @@ def update_existing_tables_postgresql(cursor):
                     user_id INTEGER NOT NULL REFERENCES "user"(id),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT TRUE
+                )
+            """)
+        
+        # Check if loan_details table exists
+        cursor.execute("""
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_name = 'loan_details'
+        """)
+        if not cursor.fetchone():
+            logger.info("Creating loan_details table...")
+            cursor.execute("""
+                CREATE TABLE loan_details (
+                    id SERIAL PRIMARY KEY,
+                    account_id INTEGER NOT NULL REFERENCES account(id),
+                    original_amount DECIMAL(10,2) NOT NULL,
+                    current_principal DECIMAL(10,2) NOT NULL,
+                    interest_rate DECIMAL(5,2) NOT NULL,
+                    loan_term_months INTEGER NOT NULL,
+                    monthly_payment DECIMAL(10,2) NOT NULL,
+                    loan_start_date TIMESTAMP NOT NULL,
+                    next_payment_date TIMESTAMP NOT NULL,
+                    lender_name VARCHAR(100),
+                    loan_number VARCHAR(50),
+                    property_address VARCHAR(200),
+                    vehicle_info VARCHAR(200),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
     except Exception as e:

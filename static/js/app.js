@@ -70,9 +70,16 @@ function closeModal(modalId) {
                 if (modalTitle) {
                     modalTitle.textContent = 'Add Account';
                 }
-                // Hide credit fields
+                // Hide credit and loan fields
                 if (typeof hideCreditFields === 'function') {
                     hideCreditFields();
+                }
+                if (typeof hideLoanFields === 'function') {
+                    hideLoanFields();
+                }
+                // Reset custom dropdown
+                if (typeof resetCustomDropdown === 'function') {
+                    resetCustomDropdown();
                 }
             }
         }
@@ -111,11 +118,25 @@ async function apiRequest(url, options = {}) {
                 'Content-Type': 'application/json',
                 ...options.headers
             },
+            credentials: 'same-origin', // Include cookies for authentication
             ...options
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            // Try to get error details from response
+            let errorMessage = `HTTP error! status: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                if (errorData.message) {
+                    errorMessage = errorData.message;
+                }
+            } catch (e) {
+                // If can't parse JSON, use default message
+            }
+            
+            const error = new Error(errorMessage);
+            error.status = response.status;
+            throw error;
         }
         
         return await response.json();

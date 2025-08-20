@@ -274,12 +274,24 @@ p {
 }
 
 /* Performance optimizations */
+/* Removed will-change from static elements to improve performance */
 .gradient-bg,
 .paint-layer,
 .paint-depth-overlay {
-    will-change: transform, opacity;
     transform-style: preserve-3d;
     backface-visibility: hidden;
+}
+
+/* Apply will-change only to actively animating elements */
+.modal.show .modal-content,
+.btn:hover,
+.account-item:hover,
+.sidebar-toggle:hover {
+    will-change: transform;
+}
+
+.sidebar.open {
+    will-change: transform;
 }
 
 /* Reduce motion for users who prefer it */
@@ -585,8 +597,154 @@ p {
     border-color: rgba(255, 255, 255, 0.3);
 }
 
+/* Custom dropdown styling for better control and glassmorphism theme */
+.custom-select {
+    position: relative;
+    width: 100%;
+}
+
+.select-display {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+    box-shadow: 
+        0 4px 16px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.select-display:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 
+        0 6px 16px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.select-display.active {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 0 0 3px rgba(255, 255, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.select-text {
+    flex: 1;
+}
+
+.select-text.placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.select-arrow {
+    transition: transform 0.2s ease;
+    font-size: 0.8rem;
+    margin-left: 10px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.select-display.active .select-arrow {
+    transform: rotate(180deg);
+}
+
+.select-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: rgba(30, 25, 45, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    margin-top: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1100;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* When dropdown would go outside modal bounds, position it above instead */
+.select-options.position-above {
+    top: auto;
+    bottom: 100%;
+    margin-top: 0;
+    margin-bottom: 4px;
+    transform: translateY(10px);
+}
+
+.select-options.position-above.show {
+    transform: translateY(0);
+}
+
+.select-options.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.select-option {
+    padding: 12px 15px;
+    color: rgba(255, 255, 255, 0.95);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.95rem;
+}
+
+.select-option:last-child {
+    border-bottom: none;
+    border-radius: 0 0 12px 12px;
+}
+
+.select-option:first-child {
+    border-radius: 12px 12px 0 0;
+}
+
+.select-option:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.select-option.selected {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-weight: 500;
+}
+
 .form-group input::placeholder {
     color: rgba(255, 255, 255, 0.6);
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.form-row .form-group {
+    margin-bottom: 0;
+    flex: 1;
 }
 
 .auth-footer {
@@ -735,8 +893,8 @@ p {
 .nav-item.active {
     background: rgba(255, 255, 255, 0.12);
     color: white;
-    border-left-color: #667eea;
-    box-shadow: inset 0 0 20px rgba(102, 126, 234, 0.1);
+    border-left-color: rgba(255, 255, 255, 0.4);
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.1);
 }
 
 .nav-item.active::before {
@@ -1367,8 +1525,132 @@ p {
     height: 100%;
     background: linear-gradient(90deg, 
         rgba(134, 239, 172, 0.9) 0%,
-        rgba(255, 193, 7, 0.9) 60%,
+        rgba(96, 165, 250, 0.9) 60%,
         rgba(255, 107, 107, 0.9) 90%);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* Loan account styles */
+.loan-account {
+    /* Removed colored border for cleaner glassmorphism look */
+}
+
+.loan-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.loan-balance,
+.loan-payment {
+    display: flex;
+    flex-direction: column;
+}
+
+.loan-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.loan-amount {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+}
+
+.loan-amount.owed {
+    color: rgba(96, 165, 250, 1);
+}
+
+.loan-amount.payment {
+    color: rgba(134, 239, 172, 1);
+}
+
+.loan-progress {
+    grid-column: 1 / -1;
+    margin-top: 15px;
+}
+
+.loan-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.loan-progress-stats {
+    font-size: 0.9rem;
+    color: rgba(134, 239, 172, 1);
+    font-weight: 600;
+}
+
+.loan-progress-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.loan-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, 
+        rgba(96, 165, 250, 0.9) 0%,
+        rgba(134, 239, 172, 0.9) 100%);
+    border-radius: 4px;
+    transition: width 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+    box-shadow: 
+        0 1px 3px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.loan-progress-details {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.loan-detail-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.loan-detail-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.loan-detail-value {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+/* Legacy progress bar styles for backward compatibility */
+.progress-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 5px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, 
+        rgba(96, 165, 250, 0.9) 0%,
+        rgba(134, 239, 172, 0.9) 100%);
     border-radius: 3px;
     transition: width 0.3s ease;
 }
@@ -1595,12 +1877,12 @@ p {
 }
 
 .bill-item.overdue {
-    border-left: 3px solid #f87171;
+    /* Removed colored border for cleaner glassmorphism look */
     padding-left: 12px;
 }
 
 .bill-item.due-soon {
-    border-left: 3px solid #fbbf24;
+    /* Removed colored border for cleaner glassmorphism look */
     padding-left: 12px;
 }
 

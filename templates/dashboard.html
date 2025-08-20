@@ -444,18 +444,24 @@
             </div>
             <div class="form-group">
                 <label for="accountType">Account Type</label>
-                <select id="accountType" name="account_type" required>
-                    <option value="checking">Checking</option>
-                    <option value="savings">Savings</option>
-                    <option value="credit">Credit Card</option>
-                    <option value="investment">Investment</option>
-                    <optgroup label="Loan Accounts">
-                        <option value="auto_loan">Auto Loan</option>
-                        <option value="mortgage">Mortgage</option>
-                        <option value="personal_loan">Personal Loan</option>
-                        <option value="student_loan">Student Loan</option>
-                    </optgroup>
-                </select>
+                <div class="custom-select" id="accountTypeSelect">
+                    <div class="select-display" id="accountTypeDisplay">
+                        <span class="select-text">Select account type</span>
+                        <span class="select-arrow">▼</span>
+                    </div>
+                    <div class="select-options" id="accountTypeOptions">
+                        <div class="select-option" data-value="checking">Checking</div>
+                        <div class="select-option" data-value="savings">Savings</div>
+                        <div class="select-option" data-value="credit">Credit Card</div>
+                        <div class="select-option" data-value="investment">Investment</div>
+                        <div class="select-option" data-value="auto_loan">Auto Loan</div>
+                        <div class="select-option" data-value="mortgage">Mortgage</div>
+                        <div class="select-option" data-value="personal_loan">Personal Loan</div>
+                        <div class="select-option" data-value="student_loan">Student Loan</div>
+                    </div>
+                </div>
+                <!-- Hidden input for form submission -->
+                <input type="hidden" id="accountType" name="account_type" required>
             </div>
             <div class="form-group">
                 <label for="accountBalance">Initial Balance</label>
