@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { CreateBillInput } from '@/lib/validations/bill';
 import { useAccounts } from '@/lib/hooks/useAccounts';
+import { useCategories } from '@/lib/hooks/useCategories';
 
 interface BillFormProps {
   open: boolean;
@@ -27,18 +28,6 @@ interface BillFormProps {
   error?: string;
 }
 
-const BILL_CATEGORIES = [
-  'Rent/Mortgage',
-  'Utilities',
-  'Internet',
-  'Phone',
-  'Insurance',
-  'Subscriptions',
-  'Loan Payment',
-  'Credit Card',
-  'Other',
-];
-
 export function BillForm({
   open,
   onClose,
@@ -48,6 +37,8 @@ export function BillForm({
   error,
 }: BillFormProps) {
   const { data: accounts } = useAccounts();
+  const { data: categories } = useCategories();
+  const categoryNames = categories?.map((cat) => cat.name) || [];
 
   const [formData, setFormData] = useState<CreateBillInput>({
     name: '',
@@ -157,7 +148,7 @@ export function BillForm({
             <Grid item xs={12}>
               <Autocomplete
                 freeSolo
-                options={BILL_CATEGORIES}
+                options={categoryNames}
                 value={formData.category}
                 onChange={(_, newValue) => {
                   setFormData((prev) => ({ ...prev, category: newValue || '' }));
@@ -170,7 +161,8 @@ export function BillForm({
                     {...params}
                     label="Category"
                     required
-                    placeholder="e.g., Utilities"
+                    placeholder="Select or type a category"
+                    helperText="Choose from your categories or type a new one"
                   />
                 )}
               />

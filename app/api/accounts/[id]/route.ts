@@ -7,7 +7,7 @@ import { z } from 'zod';
 // GET /api/accounts/:id - Get a specific account
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -16,9 +16,11 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const account = await prisma.account.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
       include: {
@@ -50,7 +52,7 @@ export async function GET(
 // PUT /api/accounts/:id - Update an account
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -59,10 +61,12 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     // Verify account belongs to user
     const existingAccount = await prisma.account.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
     });
@@ -75,7 +79,7 @@ export async function PUT(
     const validatedData = updateAccountSchema.parse(body);
 
     const account = await prisma.account.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
       include: {
         loanDetails: true,
@@ -102,7 +106,7 @@ export async function PUT(
 // DELETE /api/accounts/:id - Delete an account
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -111,10 +115,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     // Verify account belongs to user
     const existingAccount = await prisma.account.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
     });
@@ -125,7 +131,7 @@ export async function DELETE(
 
     // Delete account (cascades to transactions, bills, loan details)
     await prisma.account.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'Account deleted successfully' });

@@ -38,7 +38,7 @@ export default function Home() {
 
           <Typography variant="body1" color="text.secondary" paragraph sx={{ mb: 4 }}>
             A trustworthy, performance-focused application for managing your personal finances.
-            Track accounts, transactions, bills, and achieve your savings goals.
+            Track accounts, transactions, and bills with ease.
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>

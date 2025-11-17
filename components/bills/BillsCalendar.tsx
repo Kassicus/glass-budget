@@ -14,8 +14,10 @@ import {
 } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formatCurrency } from '@/lib/utils/accounts';
 import { getBillsCalendar, isBillPaidForMonth } from '@/lib/utils/bills';
+import { useCategories } from '@/lib/hooks/useCategories';
 
 interface Bill {
   id: string;
@@ -51,9 +53,15 @@ const MONTHS = [
 
 export function BillsCalendar({ bills }: BillsCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const { data: categories } = useCategories();
 
   const currentMonth = currentDate.getMonth() + 1;
   const currentYear = currentDate.getFullYear();
+
+  // Create a map of category names to colors
+  const categoryColorMap = new Map(
+    categories?.map((cat) => [cat.name, cat.color]) || []
+  );
 
   const goToPreviousMonth = () => {
     setCurrentDate(new Date(currentYear, currentMonth - 2, 1));
@@ -168,6 +176,8 @@ export function BillsCalendar({ bills }: BillsCalendarProps) {
                               currentMonth,
                               currentYear
                             );
+                            const categoryColor = categoryColorMap.get(bill.category) || '#60a5fa';
+
                             return (
                               <Tooltip
                                 key={bill.id}
@@ -192,15 +202,23 @@ export function BillsCalendar({ bills }: BillsCalendarProps) {
                                 <Chip
                                   label={bill.name}
                                   size="small"
-                                  color={isPaid ? 'success' : 'warning'}
+                                  icon={isPaid ? <CheckCircleIcon /> : undefined}
                                   sx={{
                                     width: '100%',
                                     fontSize: '0.65rem',
                                     height: 'auto',
+                                    background: categoryColor,
+                                    color: '#fff',
+                                    fontWeight: 600,
+                                    opacity: isPaid ? 0.6 : 1,
                                     '& .MuiChip-label': {
                                       display: 'block',
                                       whiteSpace: 'normal',
                                       py: 0.25,
+                                    },
+                                    '& .MuiChip-icon': {
+                                      color: '#fff',
+                                      fontSize: '0.9rem',
                                     },
                                   }}
                                 />

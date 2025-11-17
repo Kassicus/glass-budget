@@ -16,7 +16,7 @@ import {
 import { TransactionType, TransactionStatus } from '@prisma/client';
 import { CreateTransactionInput } from '@/lib/validations/transaction';
 import { useAccounts } from '@/lib/hooks/useAccounts';
-import { useTransactionCategories } from '@/lib/hooks/useTransactions';
+import { useCategories } from '@/lib/hooks/useCategories';
 
 interface TransactionFormProps {
   open: boolean;
@@ -48,7 +48,8 @@ export function TransactionForm({
   error,
 }: TransactionFormProps) {
   const { data: accounts } = useAccounts();
-  const { data: existingCategories = [] } = useTransactionCategories();
+  const { data: categories } = useCategories();
+  const categoryNames = categories?.map((cat) => cat.name) || [];
 
   const [formData, setFormData] = useState<CreateTransactionInput>({
     description: '',
@@ -157,7 +158,7 @@ export function TransactionForm({
                 <Grid item xs={12} sm={6}>
                   <Autocomplete
                     freeSolo
-                    options={existingCategories}
+                    options={categoryNames}
                     value={formData.category}
                     onChange={(_, newValue) => {
                       setFormData((prev) => ({ ...prev, category: newValue || '' }));
@@ -170,7 +171,8 @@ export function TransactionForm({
                         {...params}
                         label="Category"
                         required
-                        placeholder="e.g., Groceries"
+                        placeholder="Select or type a category"
+                        helperText="Choose from your categories or type a new one"
                       />
                     )}
                   />

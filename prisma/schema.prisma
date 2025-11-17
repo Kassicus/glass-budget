@@ -24,6 +24,7 @@ model User {
   transactions Transaction[]
   bills        Bill[]
   savingsGoals SavingsGoal[]
+  categories   Category[]
   budgets      Budget[]
   auditLogs    AuditLog[]
 }
@@ -199,6 +200,22 @@ model LoanDetails {
   // Account relation (one-to-one)
   accountId String  @unique
   account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+// Category model for transactions and bills
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#60a5fa") // Hex color code
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // User relation
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 // Budget category limits (NEW)

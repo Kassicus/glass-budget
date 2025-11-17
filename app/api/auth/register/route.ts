@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import { ensureDefaultCategories } from '@/lib/utils/categories';
 import { z } from 'zod';
 
 const registerSchema = z.object({
@@ -50,6 +51,9 @@ export async function POST(request: Request) {
         createdAt: true,
       },
     });
+
+    // Create default categories for the new user
+    await ensureDefaultCategories(user.id);
 
     return NextResponse.json(
       { message: 'User created successfully', user },

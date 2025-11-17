@@ -26,8 +26,8 @@ import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import ReceiptIcon from '@mui/icons-material/Receipt';
-import SavingsIcon from '@mui/icons-material/Savings';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import CategoryIcon from '@mui/icons-material/Category';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 
@@ -44,7 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Accounts', icon: <AccountBalanceIcon />, path: '/dashboard/accounts' },
   { label: 'Transactions', icon: <ReceiptIcon />, path: '/dashboard/transactions' },
   { label: 'Bills', icon: <TrendingUpIcon />, path: '/dashboard/bills' },
-  { label: 'Savings Goals', icon: <SavingsIcon />, path: '/dashboard/goals' },
+  { label: 'Categories', icon: <CategoryIcon />, path: '/dashboard/categories' },
 ];
 
 interface DashboardLayoutProps {

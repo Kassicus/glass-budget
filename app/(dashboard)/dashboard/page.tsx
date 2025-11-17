@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { useAccounts } from '@/lib/hooks/useAccounts';
 import { useTransactions } from '@/lib/hooks/useTransactions';
 import { useBills } from '@/lib/hooks/useBills';
@@ -86,12 +87,33 @@ export default function DashboardPage() {
       {/* Financial Summary */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card
+            sx={{
+              background: 'linear-gradient(135deg, rgba(52, 211, 153, 0.1) 0%, rgba(16, 185, 129, 0.15) 100%)',
+              border: '2px solid #34d399',
+            }}
+          >
             <CardContent>
-              <Typography variant="h6" gutterBottom color="text.secondary">
-                Total Assets
-              </Typography>
-              <Typography variant="h4" color="success.main" fontWeight={600}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box
+                  sx={{
+                    background: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)',
+                    borderRadius: 2,
+                    p: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    boxShadow: '0 4px 14px rgba(52, 211, 153, 0.4)',
+                  }}
+                >
+                  <AddIcon fontSize="large" />
+                </Box>
+                <Typography variant="h6" fontWeight={600}>
+                  Total Assets
+                </Typography>
+              </Box>
+              <Typography variant="h3" color="success.main" fontWeight={700}>
                 {formatCurrency(stats?.totalAssets || 0)}
               </Typography>
             </CardContent>
@@ -99,12 +121,33 @@ export default function DashboardPage() {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card
+            sx={{
+              background: 'linear-gradient(135deg, rgba(248, 113, 113, 0.1) 0%, rgba(239, 68, 68, 0.15) 100%)',
+              border: '2px solid #f87171',
+            }}
+          >
             <CardContent>
-              <Typography variant="h6" gutterBottom color="text.secondary">
-                Total Liabilities
-              </Typography>
-              <Typography variant="h4" color="error.main" fontWeight={600}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box
+                  sx={{
+                    background: 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)',
+                    borderRadius: 2,
+                    p: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    boxShadow: '0 4px 14px rgba(248, 113, 113, 0.4)',
+                  }}
+                >
+                  <AddIcon fontSize="large" sx={{ transform: 'rotate(180deg)' }} />
+                </Box>
+                <Typography variant="h6" fontWeight={600}>
+                  Total Liabilities
+                </Typography>
+              </Box>
+              <Typography variant="h3" color="error.main" fontWeight={700}>
                 {formatCurrency(stats?.totalLiabilities || 0)}
               </Typography>
             </CardContent>
@@ -112,16 +155,43 @@ export default function DashboardPage() {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card
+            sx={{
+              background: (stats?.netWorth || 0) >= 0
+                ? 'linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(167, 139, 250, 0.15) 100%)'
+                : 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.15) 100%)',
+              border: (stats?.netWorth || 0) >= 0 ? '2px solid #60a5fa' : '2px solid #fbbf24',
+            }}
+          >
             <CardContent>
-              <Typography variant="h6" gutterBottom color="text.secondary">
-                Net Worth
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box
+                  sx={{
+                    background: (stats?.netWorth || 0) >= 0
+                      ? 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)'
+                      : 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                    borderRadius: 2,
+                    p: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    boxShadow: (stats?.netWorth || 0) >= 0
+                      ? '0 4px 14px rgba(96, 165, 250, 0.4)'
+                      : '0 4px 14px rgba(251, 191, 36, 0.4)',
+                  }}
+                >
+                  <TrendingUpIcon fontSize="large" />
+                </Box>
+                <Typography variant="h6" fontWeight={600}>
+                  Net Worth
+                </Typography>
+              </Box>
               <Typography
-                variant="h4"
-                fontWeight={600}
+                variant="h3"
+                fontWeight={700}
                 color={
-                  (stats?.netWorth || 0) >= 0 ? 'success.main' : 'error.main'
+                  (stats?.netWorth || 0) >= 0 ? 'primary.main' : 'warning.main'
                 }
               >
                 {formatCurrency(stats?.netWorth || 0)}
@@ -300,7 +370,7 @@ export default function DashboardPage() {
             Quick Actions
           </Typography>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <Button
                 variant="outlined"
                 fullWidth
@@ -309,7 +379,7 @@ export default function DashboardPage() {
                 Add Transaction
               </Button>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <Button
                 variant="outlined"
                 fullWidth
@@ -318,16 +388,7 @@ export default function DashboardPage() {
                 Add Bill
               </Button>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => router.push('/dashboard/goals')}
-              >
-                Add Savings Goal
-              </Button>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <Button
                 variant="outlined"
                 fullWidth

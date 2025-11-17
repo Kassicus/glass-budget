@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Container,
   Typography,
@@ -28,6 +29,7 @@ import { CreateAccountInput } from '@/lib/validations/account';
 import { Account } from '@prisma/client';
 
 export default function AccountsPage() {
+  const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -182,6 +184,7 @@ export default function AccountsPage() {
                 account={account}
                 onEdit={() => handleEdit(account)}
                 onDelete={() => handleDeleteClick(account.id)}
+                onClick={() => router.push(`/dashboard/accounts/${account.id}`)}
               />
             </Grid>
           ))}
