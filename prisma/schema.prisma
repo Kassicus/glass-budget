@@ -118,7 +118,7 @@ model Bill {
   name       String
   amount     Float
   category   String
-  dayOfMonth Int // 1-28
+  dayOfMonth Int // 1-31 (bills on 29-31 will be due on last day of shorter months)
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

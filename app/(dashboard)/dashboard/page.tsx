@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
 import { useAccounts } from '@/lib/hooks/useAccounts';
 import { useTransactions } from '@/lib/hooks/useTransactions';
+import { useBills } from '@/lib/hooks/useBills';
 import { calculateNetWorth, formatCurrency } from '@/lib/utils/accounts';
 import { AccountCard } from '@/components/accounts/AccountCard';
 import { format } from 'date-fns';
@@ -30,8 +31,26 @@ export default function DashboardPage() {
   const router = useRouter();
   const { data: accounts, isLoading, error } = useAccounts();
   const { data: transactionsData } = useTransactions({ limit: 5 });
+  const { data: bills } = useBills(true);
 
   const stats = accounts ? calculateNetWorth(accounts) : null;
+
+  // Get upcoming bills (due in next 7 days)
+  const getCurrentMonthYear = () => {
+    const now = new Date();
+    return {
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+      day: now.getDate(),
+    };
+  };
+
+  const upcomingBills = bills?.filter((bill) => {
+    const { month, year, day } = getCurrentMonthYear();
+    const isPaidThisMonth = bill.isPaid && bill.lastPaidMonth === month && bill.lastPaidYear === year;
+    const isDueSoon = bill.dayOfMonth >= day && bill.dayOfMonth <= day + 7;
+    return !isPaidThisMonth && isDueSoon;
+  }).slice(0, 5);
 
   if (isLoading) {
     return (
@@ -206,6 +225,54 @@ export default function DashboardPage() {
                       >
                         {transaction.type === 'INCOME' ? '+' : '-'}
                         {formatCurrency(transaction.amount)}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      )}
+
+      {/* Upcoming Bills */}
+      {hasAccounts && upcomingBills && upcomingBills.length > 0 && (
+        <Box sx={{ mt: 4 }}>
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h5" fontWeight={600}>
+              Upcoming Bills
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => router.push('/dashboard/bills')}
+            >
+              View All
+            </Button>
+          </Box>
+          <TableContainer component={Card}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Bill Name</TableCell>
+                  <TableCell>Due Date</TableCell>
+                  <TableCell>Category</TableCell>
+                  <TableCell>Account</TableCell>
+                  <TableCell align="right">Amount</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {upcomingBills.map((bill) => (
+                  <TableRow key={bill.id} hover>
+                    <TableCell>{bill.name}</TableCell>
+                    <TableCell>
+                      {format(new Date().setDate(bill.dayOfMonth), 'MMM dd')}
+                    </TableCell>
+                    <TableCell>{bill.category}</TableCell>
+                    <TableCell>{bill.account.name}</TableCell>
+                    <TableCell align="right">
+                      <Typography color="error.main" fontWeight={500}>
+                        {formatCurrency(bill.amount)}
                       </Typography>
                     </TableCell>
                   </TableRow>
