@@ -1,0 +1,234 @@
+// Prisma schema for Glass Budget v2
+// Improved from v1 with additional fields for trust and reconciliation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model with authentication
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  accounts     Account[]
+  transactions Transaction[]
+  bills        Bill[]
+  savingsGoals SavingsGoal[]
+  budgets      Budget[]
+  auditLogs    AuditLog[]
+}
+
+// Account types enum
+enum AccountType {
+  CHECKING
+  SAVINGS
+  CREDIT
+  INVESTMENT
+  AUTO_LOAN
+  MORTGAGE
+  PERSONAL_LOAN
+  STUDENT_LOAN
+}
+
+// Account model
+model Account {
+  id        String      @id @default(cuid())
+  name      String
+  type      AccountType
+  balance   Float       @default(0)
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Credit card specific fields
+  creditLimit     Float?
+  currentBalance  Float? // Amount owed on credit cards
+
+  // Institution info for reconciliation
+  institutionName String?
+  accountLast4    String? // Last 4 digits only
+
+  // User relation
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relations
+  transactions Transaction[]
+  bills        Bill[]
+  loanDetails  LoanDetails?
+
+  @@index([userId])
+}
+
+// Transaction status for reconciliation
+enum TransactionStatus {
+  PENDING
+  CLEARED
+  RECONCILED
+}
+
+// Transaction type
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+// Transaction model
+model Transaction {
+  id          String            @id @default(cuid())
+  description String
+  amount      Float
+  category    String
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  date        DateTime          @default(now())
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Reconciliation
+  reconciledAt DateTime?
+
+  // User relation
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Account relation
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([category])
+  @@index([date])
+}
+
+// Bill model
+model Bill {
+  id         String   @id @default(cuid())
+  name       String
+  amount     Float
+  category   String
+  dayOfMonth Int // 1-28
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Payment tracking
+  isPaid        Boolean   @default(false)
+  paidDate      DateTime?
+  lastPaidMonth Int?
+  lastPaidYear  Int?
+
+  // Loan payment link
+  isLoanPayment Boolean @default(false)
+  loanAccountId String?
+
+  // User relation
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Account relation (which account pays this bill)
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([accountId])
+}
+
+// Savings goal model
+model SavingsGoal {
+  id            String   @id @default(cuid())
+  name          String
+  targetAmount  Float
+  currentAmount Float    @default(0)
+  isActive      Boolean  @default(true)
+  targetDate    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // User relation
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Loan details model
+model LoanDetails {
+  id String @id @default(cuid())
+
+  // Loan terms
+  originalAmount   Float
+  currentPrincipal Float
+  interestRate     Float // Annual interest rate (e.g., 5.5 for 5.5%)
+  loanTermMonths   Int
+  monthlyPayment   Float
+
+  // Loan information
+  loanStartDate   DateTime
+  nextPaymentDate DateTime
+  lenderName      String?
+  loanNumber      String?
+
+  // Loan-specific fields
+  propertyAddress String? // For mortgages
+  vehicleInfo     String? // For auto loans
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Account relation (one-to-one)
+  accountId String  @unique
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+// Budget category limits (NEW)
+model Budget {
+  id           String   @id @default(cuid())
+  category     String
+  monthlyLimit Float
+  month        Int // 1-12
+  year         Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // User relation
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category, month, year])
+  @@index([userId])
+}
+
+// Audit log for tracking changes (NEW)
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  action     AuditAction
+  entityType String // 'transaction', 'account', etc.
+  entityId   String
+  changes    String // JSON string of changes
+  createdAt  DateTime    @default(now())
+
+  // User relation
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+}

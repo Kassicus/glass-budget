@@ -1,397 +1,151 @@
-# Glass Budget
+# Glass Budget v2
 
-A modern budgeting tool built with Flask backend and glassmorphism UI design, featuring production-grade deployment automation.
+A professional, trustworthy budget management application built with Next.js 16, React, Material UI, and Prisma.
 
 ## Features
 
-- 🔐 User authentication (login/register)
-- 💳 Account management (checking, savings, credit, investment)  
-- 📊 Transaction tracking (income/expense)
-- 🔄 Recurring payments management
-- 💰 Comprehensive savings goals tracking
-- 🎨 Modern glassmorphism UI design
-- 📱 Responsive design with floating navigation
-- 🚀 Production-ready CI/CD pipeline
-- 📦 One-click Ubuntu Server deployment
+- **Modern Stack**: Next.js 16, React 19, TypeScript, Material UI
+- **Database**: SQLite with Prisma ORM (easily upgradeable to PostgreSQL)
+- **Authentication**: Secure authentication with NextAuth.js and bcrypt
+- **State Management**: TanStack Query (React Query) for server state
+- **Professional UI**: Material UI components with custom theme
+- **Performance Focused**: Optimized for speed and reliability
 
-## Tech Stack
+## Key Features (In Development)
 
-- **Backend**: Python Flask, SQLAlchemy, Flask-Login
-- **Frontend**: HTML5, CSS3 (Glassmorphism), Vanilla JavaScript
-- **Database**: SQLite (default, configurable)
-- **Authentication**: Flask-Login with bcrypt password hashing
+- Account Management (checking, savings, credit, loans)
+- Transaction Tracking with reconciliation
+- Bill Management and reminders
+- Savings Goals tracking
+- Budget vs Actual reporting
+- Loan amortization calculations
+- Data export (CSV, PDF)
+- Audit logging for all changes
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ and npm
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd glass-budget
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env and update the values
+```
+
+4. Initialize the database:
+```bash
+npx prisma generate
+npx prisma db push
+```
+
+5. Run the development server:
+```bash
+npm run dev
+```
+
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Development
+
+```bash
+npm run dev      # Start development server
+npm run build    # Build for production
+npm run start    # Start production server
+npm run lint     # Run ESLint
+npm run type-check  # Run TypeScript type checking
+```
+
+## Database
+
+The application uses SQLite by default for easy setup. To use PostgreSQL in production:
+
+1. Update `DATABASE_URL` in `.env`:
+```
+DATABASE_URL="postgresql://user:password@localhost:5432/glass_budget"
+```
+
+2. Update `prisma/schema.prisma`:
+```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+
+3. Run migrations:
+```bash
+npx prisma db push
+```
 
 ## Project Structure
 
 ```
-budget-tracker/
-├── app.py                 # Main Flask application
-├── models.py             # Database models
-├── requirements.txt      # Python dependencies
-├── .env.example         # Environment variables template
-├── static/
-│   ├── css/
-│   │   └── style.css    # Glassmorphism styling
-│   └── js/
-│       ├── app.js       # Common utilities
-│       └── dashboard.js # Dashboard functionality
-└── templates/
-    ├── base.html        # Base template
-    ├── index.html       # Landing page
-    ├── login.html       # Login page
-    ├── register.html    # Registration page
-    └── dashboard.html   # Main dashboard
+├── app/                    # Next.js 16 App Router
+│   ├── (auth)/            # Authentication pages (login, register)
+│   ├── (dashboard)/       # Dashboard pages
+│   ├── api/               # API routes
+│   └── layout.tsx         # Root layout
+├── components/            # React components
+├── lib/                   # Utility functions and configurations
+│   ├── auth.ts           # NextAuth configuration
+│   ├── prisma.ts         # Prisma client
+│   └── theme.ts          # Material UI theme
+├── prisma/               # Database schema and migrations
+├── public/               # Static assets
+└── types/                # TypeScript type definitions
 ```
 
-## 🚀 Production Installation (Ubuntu Server 24.04)
-
-For production deployment on Ubuntu Server 24.04, use our automated installation:
-
-### One-Line Installation
-```bash
-curl -sSL https://github.com/kassicus/glass-budget/releases/latest/download/install.sh | sudo bash
-```
-
-This will automatically:
-- Install all system dependencies (Python, PostgreSQL, Nginx, SSL certificates)
-- Download and install the latest Glass Budget release
-- Configure systemd service for automatic startup
-- Set up Nginx reverse proxy with SSL/TLS
-- Create database and run migrations
-- Start the application
-
-### Manual Installation from Debian Package
-```bash
-# Download the latest release (replace X.X.X with the latest version number)
-wget https://github.com/kassicus/glass-budget/releases/latest/download/glass-budget_X.X.X_all.deb
-
-# Or get the download URL dynamically
-DOWNLOAD_URL=$(curl -s https://api.github.com/repos/kassicus/glass-budget/releases/latest | grep "browser_download_url.*\.deb" | head -n 1 | cut -d '"' -f 4)
-wget "$DOWNLOAD_URL"
-
-# Install the package
-sudo apt install ./glass-budget_*.deb
-
-# The service will start automatically
-sudo systemctl status glass-budget
-```
-
-### Post-Installation
-After installation, Glass Budget will be available at:
-- **HTTP**: `http://your-server-ip`
-- **HTTPS** (with SSL): `https://your-domain.com` (if domain configured)
-
-## 🔧 Production Management
-
-### Admin CLI Tool
-```bash
-# Check service status
-glass-budget-admin status
-
-# Update to latest version (with automatic rollback on failure)
-sudo glass-budget-update
-
-# Backup database
-glass-budget-admin backup
-
-# View logs
-glass-budget-admin logs
-
-# Restart service
-glass-budget-admin restart
-
-# Configure SSL with Let's Encrypt
-glass-budget-admin ssl --domain yourdomain.com
-```
-
-### Manual Service Management
-```bash
-# Service control
-sudo systemctl start glass-budget
-sudo systemctl stop glass-budget
-sudo systemctl restart glass-budget
-sudo systemctl status glass-budget
-
-# View logs
-sudo journalctl -u glass-budget -f
-
-# Edit configuration
-sudo nano /opt/glass-budget/.env
-sudo systemctl restart glass-budget
-```
-
-## 💻 Development Installation
-
-For local development:
-
-### Quick Setup
-1. **Clone and setup**:
-   ```bash
-   git clone https://github.com/kassicus/glass-budget.git
-   cd glass-budget
-   python3 -m venv budget_env
-   source budget_env/bin/activate
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Configure environment**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your development settings
-   ```
-
-4. **Run application**:
-   ```bash
-   python app.py
-   ```
-
-5. **Access locally**:
-   Open your browser to `http://localhost:5000`
-
-### Development Tools
-```bash
-# Run tests
-python -m pytest tests/
-
-# Check code quality
-flake8 .
-bandit -r . -x tests/
-
-# Build local package (for testing)
-./scripts/build-package.sh
-```
-
-## API Endpoints
-
-### Authentication
-- `GET /` - Landing page
-- `GET /login` - Login page
-- `POST /login` - Authenticate user
-- `GET /register` - Registration page
-- `POST /register` - Create new user
-- `GET /logout` - Logout user
-
-### Accounts
-- `GET /api/accounts` - Get user accounts
-- `POST /api/accounts` - Create new account
-- `PUT /api/accounts/<id>` - Update account
-- `DELETE /api/accounts/<id>` - Delete account
-
-### Transactions
-- `GET /api/transactions` - Get user transactions
-- `POST /api/transactions` - Create new transaction
-- `PUT /api/transactions/<id>` - Update transaction
-- `DELETE /api/transactions/<id>` - Delete transaction
-
-### Recurring Payments
-- `GET /api/recurring-payments` - Get recurring payments
-- `POST /api/recurring-payments` - Create recurring payment
-- `PUT /api/recurring-payments/<id>` - Update recurring payment
-- `DELETE /api/recurring-payments/<id>` - Delete recurring payment
-
-## Database Models
-
-### User
-- id, username, email, password_hash, created_at
-- Relationships: accounts, transactions, recurring_payments
-
-### Account
-- id, name, account_type, balance, user_id, created_at
-- Types: checking, savings, credit, investment
-
-### Transaction
-- id, description, amount, category, transaction_type, date, user_id, account_id
-- Types: income, expense
-
-### RecurringPayment
-- id, name, amount, frequency, category, next_payment_date, is_active, user_id, account_id
-- Frequencies: weekly, monthly, yearly
-
-## Features
-
-### Glassmorphism UI
-- Semi-transparent cards with backdrop blur
-- Gradient backgrounds with animated particles
-- Smooth animations and transitions
-- Responsive design for all screen sizes
-
-### Account Management
-- Create multiple accounts (checking, savings, credit, investment)
-- Track balances automatically
-- Edit and delete accounts
-- Visual account cards with glassmorphism design
-
-### Transaction Tracking
-- Add income and expense transactions
-- Categorize transactions
-- Automatic balance updates
-- Transaction history with filtering
-
-### Recurring Payments
-- Set up recurring bills and subscriptions
-- Weekly, monthly, or yearly frequencies
-- Track next payment dates
-- Manage active/inactive status
-
-## Security Features
-
-- Password hashing with bcrypt
-- Session-based authentication
-- CSRF protection ready (Flask-WTF)
-- User isolation (users only see their own data)
-
-## Development
-
-The application is built with modern web standards:
-- Semantic HTML5
-- CSS Grid and Flexbox layouts
-- ES6+ JavaScript with async/await
-- RESTful API design
-- Responsive mobile-first design
-
-## 🔄 CI/CD Pipeline
-
-Glass Budget includes a comprehensive CI/CD pipeline that automatically builds, tests, and deploys releases.
-
-### Automated Release Process
-
-1. **Create a release tag**:
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-
-2. **GitHub Actions automatically**:
-   - Runs comprehensive tests (unit, integration, security)
-   - Performs security scanning (bandit, semgrep, dependency checks)
-   - Builds Debian package for Ubuntu Server 24.04
-   - Creates installation scripts
-   - Publishes GitHub release with all artifacts
-
-### Release Artifacts
-
-Each release includes:
-- `glass-budget_v1.0.0_all.deb` - Debian package
-- `install.sh` - One-line installation script
-- `DEPLOYMENT.md` - Detailed deployment guide
-- Source code archives
-
-### Pipeline Features
-
-- ✅ **Automated Testing**: Unit tests, integration tests, security scans
-- ✅ **Quality Gates**: Code quality checks, dependency vulnerability scans  
-- ✅ **Security Scanning**: Static analysis, secret detection, CVE checking
-- ✅ **Package Building**: Automated .deb package creation
-- ✅ **Release Automation**: GitHub releases with comprehensive artifacts
-- ✅ **Documentation**: Auto-generated deployment guides
-
-## 🏗️ Deployment Architecture
-
-### Production Architecture
-```
-Internet → Nginx (SSL/Proxy) → Glass Budget (Flask) → PostgreSQL
-                ↓
-           SSL Certificates (Let's Encrypt)
-                ↓
-           Monitoring & Logging
-```
-
-### Security Features
-- **HTTPS/TLS**: Automatic SSL certificate management
-- **Reverse Proxy**: Nginx with security headers and rate limiting
-- **Service Isolation**: Dedicated system user with minimal privileges
-- **Database Security**: Encrypted connections, restricted access
-- **System Hardening**: SELinux/AppArmor compatible, resource limits
-
-### Monitoring & Health Checks
-- **Health Endpoint**: `/health` for load balancer checks
-- **Metrics Endpoint**: `/metrics` for Prometheus integration
-- **Structured Logging**: JSON logs with automatic rotation
-- **Service Monitoring**: Systemd integration with restart policies
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-**Service won't start:**
-```bash
-# Check logs
-sudo journalctl -u glass-budget -f
-
-# Check configuration
-glass-budget-admin status
-
-# Verify database connection
-glass-budget-admin test-db
-```
-
-**Database connection errors:**
-```bash
-# Reset database
-glass-budget-admin reset-db
-
-# Run migrations manually
-glass-budget-admin migrate
-```
-
-**SSL/HTTPS issues:**
-```bash
-# Renew SSL certificate
-glass-budget-admin ssl --renew
-
-# Check Nginx configuration
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-**Performance issues:**
-```bash
-# Check system resources
-glass-budget-admin resources
-
-# View performance metrics
-curl http://localhost:5000/metrics
-```
-
-### Support & Logs
-
-**Important log locations:**
-- Application: `sudo journalctl -u glass-budget`
-- Nginx: `/var/log/nginx/glass-budget.*.log`
-- System: `/var/log/glass-budget/`
-
-**Configuration files:**
-- App config: `/opt/glass-budget/.env`
-- Service: `/etc/systemd/system/glass-budget.service`
-- Nginx: `/etc/nginx/sites-available/glass-budget`
-
-## 📖 Additional Documentation
-
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Comprehensive deployment guide
-- **[GitHub Releases](https://github.com/kassicus/glass-budget/releases)** - Download latest version
-- **[GitHub Issues](https://github.com/kassicus/glass-budget/issues)** - Report bugs or request features
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes following the existing code style
-4. Run tests: `python -m pytest tests/`
-5. Run security checks: `bandit -r .`
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
-
-### Development Guidelines
-- Follow PEP 8 for Python code style
-- Add tests for new features
-- Update documentation as needed
-- Ensure all CI checks pass
-
-## 📄 License
-
-This project is open source and available under the MIT License.
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **UI Library**: Material UI v6
+- **Language**: TypeScript
+- **Database**: Prisma ORM with SQLite/PostgreSQL
+- **Authentication**: NextAuth.js
+- **State Management**: TanStack Query (React Query)
+- **Forms**: React Hook Form + Zod validation
+- **Charts**: Recharts (coming soon)
+
+## Security
+
+- Passwords hashed with bcrypt (12 rounds)
+- JWT-based session management
+- CSRF protection
+- Input validation with Zod schemas
+- Audit logging for all data changes
+
+## v2 Improvements Over v1
+
+1. **Modern Framework**: Migrated from Flask/Vanilla JS to Next.js/React
+2. **Type Safety**: Full TypeScript coverage
+3. **Component Library**: Material UI for professional, accessible UI
+4. **Better State Management**: React Query for server state caching
+5. **Enhanced Security**: Improved authentication and audit logging
+6. **Reconciliation**: Transaction status tracking for bank reconciliation
+7. **Performance**: Pagination, virtualization, and optimistic updates
+8. **Data Export**: CSV and PDF export capabilities
+9. **Testing**: Comprehensive test coverage (coming soon)
+10. **Professional Design**: Focus on clarity and trust over visual effects
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
