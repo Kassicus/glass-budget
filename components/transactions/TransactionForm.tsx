@@ -30,6 +30,7 @@ interface TransactionFormProps {
 const TRANSACTION_TYPE_LABELS = {
   INCOME: 'Income',
   EXPENSE: 'Expense',
+  TRANSFER: 'Transfer',
 };
 
 const TRANSACTION_STATUS_LABELS = {
@@ -57,6 +58,8 @@ export function TransactionForm({
     status: TransactionStatus.PENDING,
     accountId: '',
     date: new Date(),
+    toAccountId: undefined,
+    notes: undefined,
   });
 
   useEffect(() => {
@@ -69,6 +72,8 @@ export function TransactionForm({
         status: initialData?.status || TransactionStatus.PENDING,
         accountId: initialData?.accountId || '',
         date: initialData?.date || new Date(),
+        toAccountId: initialData?.toAccountId || undefined,
+        notes: initialData?.notes || undefined,
       });
     }
   }, [open, initialData]);
@@ -147,50 +152,54 @@ export function TransactionForm({
               </TextField>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <Autocomplete
-                freeSolo
-                options={existingCategories}
-                value={formData.category}
-                onChange={(_, newValue) => {
-                  setFormData((prev) => ({ ...prev, category: newValue || '' }));
-                }}
-                onInputChange={(_, newValue) => {
-                  setFormData((prev) => ({ ...prev, category: newValue }));
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Category"
-                    required
-                    placeholder="e.g., Groceries"
+            {formData.type !== 'TRANSFER' && (
+              <>
+                <Grid item xs={12} sm={6}>
+                  <Autocomplete
+                    freeSolo
+                    options={existingCategories}
+                    value={formData.category}
+                    onChange={(_, newValue) => {
+                      setFormData((prev) => ({ ...prev, category: newValue || '' }));
+                    }}
+                    onInputChange={(_, newValue) => {
+                      setFormData((prev) => ({ ...prev, category: newValue }));
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Category"
+                        required
+                        placeholder="e.g., Groceries"
+                      />
+                    )}
                   />
-                )}
-              />
-            </Grid>
+                </Grid>
 
-            <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Status"
+                    value={formData.status}
+                    onChange={handleChange('status')}
+                    required
+                  >
+                    {Object.entries(TRANSACTION_STATUS_LABELS).map(([value, label]) => (
+                      <MenuItem key={value} value={value}>
+                        {label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+              </>
+            )}
+
+            <Grid item xs={12} sm={formData.type === 'TRANSFER' ? 6 : 12}>
               <TextField
                 fullWidth
                 select
-                label="Status"
-                value={formData.status}
-                onChange={handleChange('status')}
-                required
-              >
-                {Object.entries(TRANSACTION_STATUS_LABELS).map(([value, label]) => (
-                  <MenuItem key={value} value={value}>
-                    {label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                select
-                label="Account"
+                label={formData.type === 'TRANSFER' ? 'From Account' : 'Account'}
                 value={formData.accountId}
                 onChange={handleChange('accountId')}
                 required
@@ -201,6 +210,45 @@ export function TransactionForm({
                   </MenuItem>
                 ))}
               </TextField>
+            </Grid>
+
+            {formData.type === 'TRANSFER' && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  select
+                  label="To Account"
+                  value={formData.toAccountId || ''}
+                  onChange={handleChange('toAccountId')}
+                  required
+                  error={formData.toAccountId === formData.accountId}
+                  helperText={
+                    formData.toAccountId === formData.accountId
+                      ? 'Destination must be different from source'
+                      : ''
+                  }
+                >
+                  {accounts
+                    ?.filter((account) => account.id !== formData.accountId)
+                    .map((account) => (
+                      <MenuItem key={account.id} value={account.id}>
+                        {account.name}
+                      </MenuItem>
+                    ))}
+                </TextField>
+              </Grid>
+            )}
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Notes (Optional)"
+                value={formData.notes || ''}
+                onChange={handleChange('notes')}
+                multiline
+                rows={2}
+                placeholder="Add any additional notes or memo..."
+              />
             </Grid>
 
             <Grid item xs={12} sm={6}>

@@ -1,19 +1,39 @@
 import { z } from 'zod';
 import { TransactionType, TransactionStatus } from '@prisma/client';
 
-export const createTransactionSchema = z.object({
+const baseTransactionSchema = z.object({
   description: z.string().min(1, 'Description is required').max(200),
   amount: z.number().positive('Amount must be positive'),
-  category: z.string().min(1, 'Category is required').max(50),
+  category: z.string().max(50).optional(),
   type: z.nativeEnum(TransactionType, {
     errorMap: () => ({ message: 'Invalid transaction type' }),
   }),
-  status: z.nativeEnum(TransactionStatus).optional().default(TransactionStatus.PENDING),
+  status: z.nativeEnum(TransactionStatus).optional(),
   date: z.coerce.date().optional(),
   accountId: z.string().min(1, 'Account is required'),
+  toAccountId: z.string().optional(),
+  notes: z.string().max(500).optional(),
 });
 
-export const updateTransactionSchema = createTransactionSchema.partial();
+export const createTransactionSchema = baseTransactionSchema.refine(
+  (data) => {
+    // If type is TRANSFER, toAccountId is required
+    if (data.type === TransactionType.TRANSFER) {
+      return !!data.toAccountId && data.toAccountId !== data.accountId;
+    }
+    // If not a transfer, category is required
+    if (data.type !== TransactionType.TRANSFER && !data.category) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Destination account is required for transfers and must be different from source account',
+    path: ['toAccountId'],
+  }
+);
+
+export const updateTransactionSchema = baseTransactionSchema.partial();
 
 // Query parameters for filtering transactions
 export const transactionFiltersSchema = z.object({

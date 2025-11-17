@@ -209,8 +209,13 @@ export default function TransactionsPage() {
     {
       field: 'account',
       headerName: 'Account',
-      width: 150,
-      valueGetter: (value, row) => row.account?.name || '',
+      width: 200,
+      renderCell: (params) => {
+        if (params.row.type === 'TRANSFER') {
+          return `${params.row.account?.name || ''} → ${params.row.toAccount?.name || ''}`;
+        }
+        return params.row.account?.name || '';
+      },
     },
     {
       field: 'type',
@@ -220,7 +225,13 @@ export default function TransactionsPage() {
         <Chip
           label={params.value}
           size="small"
-          color={params.value === 'INCOME' ? 'success' : 'error'}
+          color={
+            params.value === 'INCOME'
+              ? 'success'
+              : params.value === 'TRANSFER'
+              ? 'info'
+              : 'error'
+          }
           variant="outlined"
         />
       ),
@@ -233,7 +244,11 @@ export default function TransactionsPage() {
       headerAlign: 'right',
       valueFormatter: (value) => formatCurrency(value),
       cellClassName: (params) =>
-        params.row.type === 'INCOME' ? 'text-success' : 'text-error',
+        params.row.type === 'INCOME'
+          ? 'text-success'
+          : params.row.type === 'TRANSFER'
+          ? 'text-info'
+          : 'text-error',
     },
     {
       field: 'status',
@@ -421,6 +436,9 @@ export default function TransactionsPage() {
             },
             '& .text-error': {
               color: 'error.main',
+            },
+            '& .text-info': {
+              color: 'info.main',
             },
           }}
         />

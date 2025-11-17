@@ -220,10 +220,20 @@ export default function DashboardPage() {
                     <TableCell>{transaction.account.name}</TableCell>
                     <TableCell align="right">
                       <Typography
-                        color={transaction.type === 'INCOME' ? 'success.main' : 'error.main'}
+                        color={
+                          transaction.type === 'INCOME'
+                            ? 'success.main'
+                            : transaction.type === 'TRANSFER'
+                            ? 'info.main'
+                            : 'error.main'
+                        }
                         fontWeight={500}
                       >
-                        {transaction.type === 'INCOME' ? '+' : '-'}
+                        {transaction.type === 'INCOME'
+                          ? '+'
+                          : transaction.type === 'TRANSFER'
+                          ? '↔'
+                          : '-'}
                         {formatCurrency(transaction.amount)}
                       </Typography>
                     </TableCell>

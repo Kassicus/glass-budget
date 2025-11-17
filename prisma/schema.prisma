@@ -63,9 +63,10 @@ model Account {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Relations
-  transactions Transaction[]
-  bills        Bill[]
-  loanDetails  LoanDetails?
+  transactions        Transaction[]
+  transfersReceived   Transaction[] @relation("TransferDestination")
+  bills               Bill[]
+  loanDetails         LoanDetails?
 
   @@index([userId])
 }
@@ -81,6 +82,7 @@ enum TransactionStatus {
 enum TransactionType {
   INCOME
   EXPENSE
+  TRANSFER
 }
 
 // Transaction model
@@ -95,6 +97,9 @@ model Transaction {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
+  // Notes/memo field
+  notes String?
+
   // Reconciliation
   reconciledAt DateTime?
 
@@ -102,9 +107,13 @@ model Transaction {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Account relation
+  // Account relation (source account for transfers)
   accountId String
   account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  // Destination account for transfers
+  toAccountId String?
+  toAccount   Account? @relation("TransferDestination", fields: [toAccountId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([accountId])

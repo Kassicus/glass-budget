@@ -31,6 +31,13 @@ export async function GET(
             type: true,
           },
         },
+        toAccount: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
       },
     });
 
@@ -91,38 +98,56 @@ export async function PUT(
       }
     }
 
-    // Calculate balance adjustments
+    // Get new values (use existing if not provided)
     const oldAmount = existingTransaction.amount;
     const oldType = existingTransaction.type;
     const oldAccountId = existingTransaction.accountId;
+    const oldToAccountId = existingTransaction.toAccountId;
 
     const newAmount = validatedData.amount ?? oldAmount;
     const newType = validatedData.type ?? oldType;
     const newAccountId = validatedData.accountId ?? oldAccountId;
+    const newToAccountId = validatedData.toAccountId ?? oldToAccountId;
 
-    // Reverse old transaction
-    const oldBalanceChange = oldType === 'INCOME' ? -oldAmount : oldAmount;
+    // Reverse old transaction effects
+    if (oldType === 'TRANSFER' && oldToAccountId) {
+      // Reverse transfer: add back to source, subtract from destination
+      await prisma.account.update({
+        where: { id: oldAccountId },
+        data: { balance: { increment: oldAmount } },
+      });
+      await prisma.account.update({
+        where: { id: oldToAccountId },
+        data: { balance: { decrement: oldAmount } },
+      });
+    } else {
+      // Reverse income/expense
+      const oldBalanceChange = oldType === 'INCOME' ? -oldAmount : oldAmount;
+      await prisma.account.update({
+        where: { id: oldAccountId },
+        data: { balance: { increment: oldBalanceChange } },
+      });
+    }
 
-    await prisma.account.update({
-      where: { id: oldAccountId },
-      data: {
-        balance: {
-          increment: oldBalanceChange,
-        },
-      },
-    });
-
-    // Apply new transaction
-    const newBalanceChange = newType === 'INCOME' ? newAmount : -newAmount;
-
-    await prisma.account.update({
-      where: { id: newAccountId },
-      data: {
-        balance: {
-          increment: newBalanceChange,
-        },
-      },
-    });
+    // Apply new transaction effects
+    if (newType === 'TRANSFER' && newToAccountId) {
+      // Apply transfer: subtract from source, add to destination
+      await prisma.account.update({
+        where: { id: newAccountId },
+        data: { balance: { decrement: newAmount } },
+      });
+      await prisma.account.update({
+        where: { id: newToAccountId },
+        data: { balance: { increment: newAmount } },
+      });
+    } else {
+      // Apply income/expense
+      const newBalanceChange = newType === 'INCOME' ? newAmount : -newAmount;
+      await prisma.account.update({
+        where: { id: newAccountId },
+        data: { balance: { increment: newBalanceChange } },
+      });
+    }
 
     // Update transaction
     const transaction = await prisma.transaction.update({
@@ -130,6 +155,13 @@ export async function PUT(
       data: validatedData,
       include: {
         account: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+        toAccount: {
           select: {
             id: true,
             name: true,
@@ -182,19 +214,28 @@ export async function DELETE(
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
 
-    // Reverse balance change
-    const balanceChange = transaction.type === 'INCOME'
-      ? -transaction.amount
-      : transaction.amount;
+    // Reverse balance changes
+    if (transaction.type === 'TRANSFER' && transaction.toAccountId) {
+      // Reverse transfer: add back to source, subtract from destination
+      await prisma.account.update({
+        where: { id: transaction.accountId },
+        data: { balance: { increment: transaction.amount } },
+      });
+      await prisma.account.update({
+        where: { id: transaction.toAccountId },
+        data: { balance: { decrement: transaction.amount } },
+      });
+    } else {
+      // Reverse income/expense
+      const balanceChange = transaction.type === 'INCOME'
+        ? -transaction.amount
+        : transaction.amount;
 
-    await prisma.account.update({
-      where: { id: transaction.accountId },
-      data: {
-        balance: {
-          increment: balanceChange,
-        },
-      },
-    });
+      await prisma.account.update({
+        where: { id: transaction.accountId },
+        data: { balance: { increment: balanceChange } },
+      });
+    }
 
     // Delete transaction
     await prisma.transaction.delete({

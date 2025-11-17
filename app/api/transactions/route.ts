@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createTransactionSchema, transactionFiltersSchema } from '@/lib/validations/transaction';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma, TransactionStatus } from '@prisma/client';
 
 // GET /api/transactions - Get transactions with filtering and pagination
 export async function GET(request: Request) {
@@ -92,6 +92,13 @@ export async function GET(request: Request) {
             type: true,
           },
         },
+        toAccount: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
       },
       orderBy: { date: 'desc' },
       skip: (filters.page - 1) * filters.limit,
@@ -133,7 +140,21 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const validatedData = createTransactionSchema.parse(body);
+    let validatedData = createTransactionSchema.parse(body);
+
+    // Set defaults for transfers
+    if (validatedData.type === 'TRANSFER') {
+      validatedData = {
+        ...validatedData,
+        category: validatedData.category || 'Transfer',
+        status: TransactionStatus.CLEARED,
+      };
+    } else if (!validatedData.status) {
+      validatedData = {
+        ...validatedData,
+        status: TransactionStatus.PENDING,
+      };
+    }
 
     // Verify account belongs to user
     const account = await prisma.account.findFirst({
@@ -147,7 +168,79 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    // Create transaction
+    // Handle transfers
+    if (validatedData.type === 'TRANSFER') {
+      if (!validatedData.toAccountId) {
+        return NextResponse.json(
+          { error: 'Destination account is required for transfers' },
+          { status: 400 }
+        );
+      }
+
+      // Verify destination account belongs to user
+      const toAccount = await prisma.account.findFirst({
+        where: {
+          id: validatedData.toAccountId,
+          userId: session.user.id,
+        },
+      });
+
+      if (!toAccount) {
+        return NextResponse.json(
+          { error: 'Destination account not found' },
+          { status: 404 }
+        );
+      }
+
+      // Create transfer transaction
+      const transaction = await prisma.transaction.create({
+        data: {
+          ...validatedData,
+          userId: session.user.id,
+          date: validatedData.date || new Date(),
+        },
+        include: {
+          account: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+            },
+          },
+          toAccount: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+            },
+          },
+        },
+      });
+
+      // Update source account (subtract)
+      await prisma.account.update({
+        where: { id: validatedData.accountId },
+        data: {
+          balance: {
+            decrement: validatedData.amount,
+          },
+        },
+      });
+
+      // Update destination account (add)
+      await prisma.account.update({
+        where: { id: validatedData.toAccountId },
+        data: {
+          balance: {
+            increment: validatedData.amount,
+          },
+        },
+      });
+
+      return NextResponse.json(transaction, { status: 201 });
+    }
+
+    // Create regular transaction (income/expense)
     const transaction = await prisma.transaction.create({
       data: {
         ...validatedData,
@@ -156,6 +249,13 @@ export async function POST(request: Request) {
       },
       include: {
         account: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+        toAccount: {
           select: {
             id: true,
             name: true,
@@ -182,15 +282,17 @@ export async function POST(request: Request) {
     return NextResponse.json(transaction, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('Validation error:', error.errors);
       return NextResponse.json(
-        { error: error.errors[0].message },
+        { error: error.errors[0].message, details: error.errors },
         { status: 400 }
       );
     }
 
     console.error('Error creating transaction:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
-      { error: 'Failed to create transaction' },
+      { error: 'Failed to create transaction', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
