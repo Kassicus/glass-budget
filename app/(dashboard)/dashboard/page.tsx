@@ -10,16 +10,26 @@ import {
   Button,
   CircularProgress,
   Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
 import { useAccounts } from '@/lib/hooks/useAccounts';
+import { useTransactions } from '@/lib/hooks/useTransactions';
 import { calculateNetWorth, formatCurrency } from '@/lib/utils/accounts';
 import { AccountCard } from '@/components/accounts/AccountCard';
+import { format } from 'date-fns';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { data: accounts, isLoading, error } = useAccounts();
+  const { data: transactionsData } = useTransactions({ limit: 5 });
 
   const stats = accounts ? calculateNetWorth(accounts) : null;
 
@@ -154,6 +164,56 @@ export default function DashboardPage() {
             </Grid>
           ))}
         </Grid>
+      )}
+
+      {/* Recent Transactions */}
+      {hasAccounts && transactionsData && transactionsData.transactions.length > 0 && (
+        <Box sx={{ mt: 4 }}>
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h5" fontWeight={600}>
+              Recent Transactions
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => router.push('/dashboard/transactions')}
+            >
+              View All
+            </Button>
+          </Box>
+          <TableContainer component={Card}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell>Category</TableCell>
+                  <TableCell>Account</TableCell>
+                  <TableCell align="right">Amount</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {transactionsData.transactions.map((transaction) => (
+                  <TableRow key={transaction.id} hover>
+                    <TableCell>{format(new Date(transaction.date), 'MMM dd')}</TableCell>
+                    <TableCell>{transaction.description}</TableCell>
+                    <TableCell>{transaction.category}</TableCell>
+                    <TableCell>{transaction.account.name}</TableCell>
+                    <TableCell align="right">
+                      <Typography
+                        color={transaction.type === 'INCOME' ? 'success.main' : 'error.main'}
+                        fontWeight={500}
+                      >
+                        {transaction.type === 'INCOME' ? '+' : '-'}
+                        {formatCurrency(transaction.amount)}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
       )}
 
       {/* Quick Actions */}
