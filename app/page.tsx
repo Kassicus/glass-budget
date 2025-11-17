@@ -1,8 +1,11 @@
+'use client';
+
 import { Container, Typography, Box, Button, Paper } from '@mui/material';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 
 export default function Home() {
+  const router = useRouter();
   return (
     <Container maxWidth="lg">
       <Box
@@ -42,16 +45,14 @@ export default function Home() {
             <Button
               variant="contained"
               size="large"
-              component={Link}
-              href="/login"
+              onClick={() => router.push('/login')}
             >
               Login
             </Button>
             <Button
               variant="outlined"
               size="large"
-              component={Link}
-              href="/register"
+              onClick={() => router.push('/register')}
             >
               Register
             </Button>

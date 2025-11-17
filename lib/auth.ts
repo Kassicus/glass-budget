@@ -1,41 +1,35 @@
-import type { NextAuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
+import NextAuth from 'next-auth';
+import Credentials from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import { prisma } from './prisma';
 
-export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: 'jwt',
-  },
-  pages: {
-    signIn: '/login',
-    signOut: '/login',
-    error: '/login',
-  },
+export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    CredentialsProvider({
-      name: 'credentials',
+    Credentials({
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email and password required');
+          return null;
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email as string },
         });
 
         if (!user) {
-          throw new Error('Invalid email or password');
+          return null;
         }
 
-        const isValidPassword = await compare(credentials.password, user.passwordHash);
+        const isValidPassword = await compare(
+          credentials.password as string,
+          user.passwordHash
+        );
 
         if (!isValidPassword) {
-          throw new Error('Invalid email or password');
+          return null;
         }
 
         return {
@@ -46,6 +40,9 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+  pages: {
+    signIn: '/login',
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -64,4 +61,4 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-};
+});
