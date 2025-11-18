@@ -45,6 +45,8 @@ export default function BillsPage() {
   const [editingBill, setEditingBill] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [billToDelete, setBillToDelete] = useState<string | null>(null);
+  const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [billToPay, setBillToPay] = useState<any>(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -126,14 +128,26 @@ export default function BillsPage() {
     }
   };
 
-  const handlePayBill = async (bill: any) => {
+  const handlePayBillClick = (bill: any) => {
+    setBillToPay(bill);
+    setPayDialogOpen(true);
+  };
+
+  const handlePayBill = async (createTransaction: boolean) => {
+    if (!billToPay) return;
+
     try {
-      await payBill.mutateAsync({ id: bill.id });
+      await payBill.mutateAsync({
+        id: billToPay.id,
+        data: { createTransaction }
+      });
       setSnackbar({
         open: true,
-        message: `${bill.name} marked as paid`,
+        message: `${billToPay.name} marked as paid${createTransaction ? ' and transaction created' : ''}`,
         severity: 'success',
       });
+      setPayDialogOpen(false);
+      setBillToPay(null);
     } catch (err) {
       setSnackbar({
         open: true,
@@ -265,7 +279,7 @@ export default function BillsPage() {
             <GridActionsCellItem
               icon={<PaymentIcon />}
               label="Mark as Paid"
-              onClick={() => handlePayBill(params.row)}
+              onClick={() => handlePayBillClick(params.row)}
               key="pay"
               showInMenu
             />
@@ -344,7 +358,13 @@ export default function BillsPage() {
           />
         </Paper>
       ) : (
-        <BillsCalendar bills={bills || []} />
+        <BillsCalendar
+          bills={bills || []}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+          onPay={handlePayBillClick}
+          onUnpay={handleUnpayBill}
+        />
       )}
 
       <BillForm
@@ -374,6 +394,52 @@ export default function BillsPage() {
             disabled={deleteBill.isPending}
           >
             {deleteBill.isPending ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={payDialogOpen} onClose={() => setPayDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Pay Bill</DialogTitle>
+        <DialogContent>
+          <Typography gutterBottom>
+            How would you like to mark <strong>{billToPay?.name}</strong> as paid?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Amount: {formatCurrency(billToPay?.amount || 0)}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{
+          flexDirection: 'column',
+          gap: 1.5,
+          alignItems: 'stretch',
+          px: 3,
+          pb: 2.5,
+          pt: 1
+        }}>
+          <Button
+            onClick={() => handlePayBill(true)}
+            color="primary"
+            variant="contained"
+            disabled={payBill.isPending}
+          >
+            Mark as Paid & Create Transaction
+          </Button>
+          <Button
+            onClick={() => handlePayBill(false)}
+            color="secondary"
+            variant="outlined"
+            disabled={payBill.isPending}
+          >
+            Mark as Paid Only
+          </Button>
+          <Button
+            onClick={() => {
+              setPayDialogOpen(false);
+              setBillToPay(null);
+            }}
+            disabled={payBill.isPending}
+          >
+            Cancel
           </Button>
         </DialogActions>
       </Dialog>

@@ -75,3 +75,48 @@ export function getBillsCalendar(
 
   return calendar;
 }
+
+/**
+ * Calculate total remaining for bills split by the 15th of the month
+ */
+export function getBillsSplitTotals(
+  bills: Array<{
+    id: string;
+    amount: number;
+    dayOfMonth: number;
+    isPaid: boolean;
+    lastPaidMonth: number | null;
+    lastPaidYear: number | null;
+    isActive: boolean;
+  }>,
+  month: number,
+  year: number
+): {
+  total1to15: number;
+  total15toEnd: number;
+} {
+  const activeBills = bills.filter((bill) => bill.isActive);
+
+  let total1to15 = 0;
+  let total15toEnd = 0;
+
+  activeBills.forEach((bill) => {
+    // Skip if already paid for this month
+    if (isBillPaidForMonth(bill, month, year)) {
+      return;
+    }
+
+    const actualDay = getActualDayOfMonth(bill.dayOfMonth, month, year);
+
+    if (actualDay < 15) {
+      total1to15 += bill.amount;
+    } else {
+      total15toEnd += bill.amount;
+    }
+  });
+
+  return {
+    total1to15,
+    total15toEnd,
+  };
+}

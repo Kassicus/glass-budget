@@ -15,6 +15,7 @@ export const updateBillSchema = createBillSchema.partial();
 
 export const payBillSchema = z.object({
   paidDate: z.coerce.date().optional(),
+  createTransaction: z.boolean().optional().default(true),
 });
 
 export type CreateBillInput = z.infer<typeof createBillSchema>;

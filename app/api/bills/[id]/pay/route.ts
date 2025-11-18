@@ -34,7 +34,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { paidDate } = payBillSchema.parse(body);
+    const { paidDate, createTransaction } = payBillSchema.parse(body);
 
     const paymentDate = paidDate || new Date();
     const paymentMonth = paymentDate.getMonth() + 1;
@@ -52,40 +52,45 @@ export async function POST(
       );
     }
 
-    // Create a transaction for the payment
-    const transaction = await prisma.transaction.create({
-      data: {
-        description: `Bill Payment: ${bill.name}`,
-        amount: bill.amount,
-        category: bill.category,
-        type: 'EXPENSE',
-        status: 'CLEARED',
-        date: paymentDate,
-        userId: session.user.id,
-        accountId: bill.accountId,
-      },
-    });
+    let transaction = null;
 
-    // Update account balance
-    await prisma.account.update({
-      where: { id: bill.accountId },
-      data: {
-        balance: {
-          decrement: bill.amount,
+    // Only create a transaction if requested
+    if (createTransaction) {
+      // Create a transaction for the payment
+      transaction = await prisma.transaction.create({
+        data: {
+          description: `Bill Payment: ${bill.name}`,
+          amount: bill.amount,
+          category: bill.category,
+          type: 'EXPENSE',
+          status: 'CLEARED',
+          date: paymentDate,
+          userId: session.user.id,
+          accountId: bill.accountId,
         },
-      },
-    });
+      });
 
-    // If it's a loan payment, update the loan balance
-    if (bill.isLoanPayment && bill.loanAccountId) {
+      // Update account balance
       await prisma.account.update({
-        where: { id: bill.loanAccountId },
+        where: { id: bill.accountId },
         data: {
           balance: {
-            increment: bill.amount, // Reduces the loan balance (negative number becomes less negative)
+            decrement: bill.amount,
           },
         },
       });
+
+      // If it's a loan payment, update the loan balance
+      if (bill.isLoanPayment && bill.loanAccountId) {
+        await prisma.account.update({
+          where: { id: bill.loanAccountId },
+          data: {
+            balance: {
+              increment: bill.amount, // Reduces the loan balance (negative number becomes less negative)
+            },
+          },
+        });
+      }
     }
 
     // Update bill payment status
