@@ -1,0 +1,310 @@
+# Glass Budget - Ubuntu Deployment Guide
+
+This guide covers deploying Glass Budget on Ubuntu Server using systemd.
+
+## Prerequisites
+
+- Ubuntu Server 20.04 LTS or newer
+- Node.js 18+ and npm
+- Git (recommended for easy updates)
+- Sudo/root access
+
+## Quick Start
+
+### 1. Install Node.js (if not already installed)
+
+```bash
+# Install Node.js 20 LTS
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Verify installation
+node -v  # Should be v18 or higher
+npm -v
+```
+
+### 2. Clone the Repository
+
+```bash
+cd ~
+git clone <your-repository-url> glass-budget
+cd glass-budget
+```
+
+### 3. Run Installation Script
+
+```bash
+sudo ./scripts/ubuntu/install.sh
+```
+
+The installation script will:
+- ✓ Check prerequisites (Node.js, npm)
+- ✓ Create a dedicated `glass-budget` system user
+- ✓ Create necessary directories (`/opt/glass-budget`, `/var/log/glass-budget`)
+- ✓ Copy application files to `/opt/glass-budget`
+- ✓ Generate secure `.env.production` file
+- ✓ Install npm dependencies
+- ✓ Set up and migrate the database
+- ✓ Build the Next.js application
+- ✓ Install and start the systemd service
+- ✓ Configure firewall (if UFW is active)
+
+### 4. Configure Application
+
+After installation, update the configuration file:
+
+```bash
+sudo nano /opt/glass-budget/.env.production
+```
+
+Update `NEXTAUTH_URL` with your server's IP or domain:
+```env
+NEXTAUTH_URL="http://192.168.1.100:3000"
+```
+
+Then restart the service:
+```bash
+sudo systemctl restart glass-budget
+```
+
+### 5. Access the Application
+
+Open your browser and navigate to:
+```
+http://your-server-ip:3000
+```
+
+Register your first user account to get started!
+
+## Updating the Application
+
+**This is the key feature for easy maintenance!**
+
+Whenever you make changes to your code and want to deploy them:
+
+```bash
+cd ~/glass-budget
+git pull  # Get latest changes (if using git)
+sudo ./scripts/ubuntu/update.sh
+```
+
+The update script will:
+- ✓ Pull latest changes from git (if available)
+- ✓ Stop the service gracefully
+- ✓ Backup your database automatically
+- ✓ Copy updated files to `/opt/glass-budget`
+- ✓ Install any new dependencies
+- ✓ Run database migrations
+- ✓ Rebuild the application
+- ✓ Restart the service
+
+**That's it!** One command updates everything.
+
+### Update from Development Machine
+
+You can also push updates directly from your development machine:
+
+```bash
+# On your dev machine
+git add .
+git commit -m "Your changes"
+git push
+
+# Then on the server
+ssh your-server
+cd ~/glass-budget
+sudo ./scripts/ubuntu/update.sh
+```
+
+Or combine into one command:
+```bash
+ssh your-server "cd ~/glass-budget && git pull && sudo ./scripts/ubuntu/update.sh"
+```
+
+## Management Commands
+
+### Using systemctl (standard method)
+
+```bash
+# Check status
+sudo systemctl status glass-budget
+
+# Start service
+sudo systemctl start glass-budget
+
+# Stop service
+sudo systemctl stop glass-budget
+
+# Restart service
+sudo systemctl restart glass-budget
+
+# View logs (real-time)
+sudo journalctl -u glass-budget -f
+
+# View last 50 log lines
+sudo journalctl -u glass-budget -n 50
+
+# Enable auto-start on boot (already done by install.sh)
+sudo systemctl enable glass-budget
+
+# Disable auto-start on boot
+sudo systemctl disable glass-budget
+```
+
+### Using Helper Scripts (easier)
+
+```bash
+# Check status and recent logs
+sudo /opt/glass-budget/scripts/ubuntu/status.sh
+
+# View logs in real-time
+sudo /opt/glass-budget/scripts/ubuntu/logs.sh
+
+# Restart service
+sudo /opt/glass-budget/scripts/ubuntu/restart.sh
+
+# Update application
+sudo /opt/glass-budget/scripts/ubuntu/update.sh
+
+# Uninstall completely
+sudo /opt/glass-budget/scripts/ubuntu/uninstall.sh
+```
+
+## Directory Structure
+
+```
+/opt/glass-budget/              # Application directory
+├── app/                        # Next.js application code
+├── components/                 # React components
+├── lib/                        # Utility libraries
+├── prisma/                     # Database schema and migrations
+├── public/                     # Static assets
+├── scripts/                    # Deployment scripts
+├── data/                       # SQLite database (production.db)
+├── backups/                    # Automatic database backups
+├── node_modules/               # Dependencies
+├── .next/                      # Built Next.js app
+└── .env.production             # Configuration file
+
+/var/log/glass-budget/          # Log files
+├── output.log                  # Application stdout
+└── error.log                   # Application stderr
+
+/etc/systemd/system/            # System services
+└── glass-budget.service        # Service definition
+```
+
+## Configuration
+
+The `.env.production` file contains all configuration:
+
+```env
+# Database location
+DATABASE_URL="file:./data/production.db"
+
+# NextAuth configuration
+NEXTAUTH_SECRET="<auto-generated-secure-secret>"
+NEXTAUTH_URL="http://your-server-ip:3000"
+
+# Environment
+NODE_ENV="production"
+```
+
+**Important**: Always update `NEXTAUTH_URL` to match your server's IP or domain name.
+
+## Firewall Configuration
+
+If using UFW (Ubuntu's default firewall):
+
+```bash
+# Allow port 3000
+sudo ufw allow 3000/tcp
+
+# Check firewall status
+sudo ufw status
+```
+
+## Troubleshooting
+
+### Service won't start
+
+Check logs for errors:
+```bash
+sudo journalctl -u glass-budget -n 50
+```
+
+### Database errors
+
+Check database file permissions:
+```bash
+ls -la /opt/glass-budget/data/
+```
+
+Should be owned by `glass-budget:glass-budget`.
+
+### Port already in use
+
+Check what's using port 3000:
+```bash
+sudo lsof -i :3000
+```
+
+### Reset the application
+
+To start fresh (WARNING: deletes all data):
+```bash
+sudo systemctl stop glass-budget
+sudo rm /opt/glass-budget/data/production.db
+cd /opt/glass-budget
+sudo -u glass-budget npm run db:setup
+sudo systemctl start glass-budget
+```
+
+## Database Backups
+
+The update script automatically backs up your database before each update to:
+```
+/opt/glass-budget/backups/production_YYYYMMDD_HHMMSS.db
+```
+
+Only the 5 most recent backups are kept.
+
+### Manual Backup
+
+```bash
+sudo cp /opt/glass-budget/data/production.db ~/glass-budget-backup-$(date +%Y%m%d).db
+```
+
+### Restore from Backup
+
+```bash
+sudo systemctl stop glass-budget
+sudo cp /opt/glass-budget/backups/production_YYYYMMDD_HHMMSS.db /opt/glass-budget/data/production.db
+sudo chown glass-budget:glass-budget /opt/glass-budget/data/production.db
+sudo systemctl start glass-budget
+```
+
+## Security Considerations
+
+1. **Firewall**: Only allow port 3000 from trusted networks
+2. **HTTPS**: Consider using nginx as a reverse proxy with SSL/TLS
+3. **Database**: SQLite database is stored locally - ensure regular backups
+4. **Updates**: Run `update.sh` regularly to get security fixes
+
+## Uninstalling
+
+To completely remove Glass Budget:
+
+```bash
+sudo /opt/glass-budget/scripts/ubuntu/uninstall.sh
+```
+
+This will remove:
+- The systemd service
+- Application files (`/opt/glass-budget`)
+- Log files (`/var/log/glass-budget`)
+- System user (`glass-budget`)
+
+## Support
+
+For issues or questions, please refer to the main project documentation or create an issue in the repository.

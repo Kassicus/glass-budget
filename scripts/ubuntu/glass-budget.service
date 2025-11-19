@@ -1,0 +1,31 @@
+[Unit]
+Description=Glass Budget - Personal Finance Management
+Documentation=https://github.com/yourusername/glass-budget
+After=network.target
+
+[Service]
+Type=simple
+User=glass-budget
+Group=glass-budget
+WorkingDirectory=/opt/glass-budget
+Environment="NODE_ENV=production"
+EnvironmentFile=/opt/glass-budget/.env.production
+ExecStart=/usr/bin/node /opt/glass-budget/node_modules/.bin/next start
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/glass-budget/output.log
+StandardError=append:/var/log/glass-budget/error.log
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/glass-budget/data /var/log/glass-budget
+
+# Resource limits
+LimitNOFILE=65536
+MemoryLimit=512M
+
+[Install]
+WantedBy=multi-user.target
